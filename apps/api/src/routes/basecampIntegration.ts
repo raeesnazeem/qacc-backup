@@ -371,8 +371,8 @@ router.post(
         const mentionsList = await Promise.all(
           bpIds.map(async (id: any) => {
             const person = await getBasecampPerson(
-              projectSettings!.basecamp_token,
-              projectSettings!.basecamp_account_id,
+              projectSettings!.basecamp_token!,
+              projectSettings!.basecamp_account_id!,
               Number(id),
             )
             if (person && person.attachable_sgid) {
@@ -528,7 +528,7 @@ Created via QA Command Center`.trim()
         token: projectSettings!.basecamp_token,
         accountId: projectSettings!.basecamp_account_id,
         projectId: projectSettings!.basecamp_project_id || task.project_id,
-        recordingId: todolistId,
+        recordingId: todolistId!,
         content: description,
       })
 
@@ -553,11 +553,11 @@ Created via QA Command Center`.trim()
         Promise.all(
           mergedThread.map((item) =>
             createBasecampComment({
-              token: projectSettings!.basecamp_token,
-              accountId: projectSettings!.basecamp_account_id,
+              token: projectSettings!.basecamp_token!,
+              accountId: projectSettings!.basecamp_account_id!,
               projectId:
                 projectSettings!.basecamp_project_id || task.project_id,
-              recordingId: todolistId,
+              recordingId: todolistId!,
               content: item.content,
             }),
           ),
