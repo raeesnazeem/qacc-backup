@@ -15,8 +15,6 @@ import {
   OnboardingPage,
   TestPage,
   VisualDiffPage,
-  Week1TestPage,
-  Week2TestPage,
   QueueHistoryPage,
   ActivityLogPage,
   StatsPage,
@@ -78,14 +76,6 @@ export const router = createBrowserRouter(
             {
               path: "/test",
               element: <TestPage />,
-            },
-            {
-              path: "/week1-test",
-              element: <Week1TestPage />,
-            },
-            {
-              path: "/week2-test",
-              element: <Week2TestPage />,
             },
             {
               path: "/sso-callback",
@@ -157,7 +147,6 @@ export const router = createBrowserRouter(
   ],
   {
     future: {
-      v7_startTransition: true,
       v7_relativeSplatPath: true,
     },
   },
