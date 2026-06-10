@@ -595,7 +595,7 @@ Created via QA Command Center`.trim()
             token: projectSettings!.basecamp_token,
             accountId: projectSettings!.basecamp_account_id,
             projectId: projectSettings!.basecamp_project_id || task.project_id,
-            recordingId: todolistId,
+            recordingId: todolistId!,
             commentId: mainCommentId,
           })
           logger.info(
@@ -787,7 +787,7 @@ router.post(
         if (!taskGroups.has(groupKey)) {
           taskGroups.set(groupKey, [])
         }
-        taskGroups.get(groupKey).push(task)
+        taskGroups.get(groupKey)!.push(task)
       }
       console.log(
         `[BasecampBulkPush] Grouped ${tasks.length} tasks into ${taskGroups.size} conceptual groups.`,
@@ -892,8 +892,8 @@ router.post(
               : null
             if (bpId) {
               const person = await getBasecampPerson(
-                projectSettings.basecamp_token,
-                projectSettings.basecamp_account_id,
+                projectSettings.basecamp_token!,
+                projectSettings.basecamp_account_id!,
                 Number(bpId),
               )
               if (person?.attachable_sgid) {
@@ -1117,7 +1117,7 @@ router.post(
         if (!taskGroups.has(groupKey)) {
           taskGroups.set(groupKey, [])
         }
-        taskGroups.get(groupKey).push(task)
+        taskGroups.get(groupKey)!.push(task)
       }
       console.log(
         `[BasecampBulkComment] Grouped ${tasks.length} tasks into ${taskGroups.size} conceptual groups.`,
@@ -1163,8 +1163,8 @@ router.post(
               : null
             if (bpId) {
               const person = await getBasecampPerson(
-                projectSettings.basecamp_token,
-                projectSettings.basecamp_account_id,
+                projectSettings.basecamp_token!,
+                projectSettings.basecamp_account_id!,
                 Number(bpId),
               )
               if (person?.attachable_sgid) {
@@ -1350,8 +1350,8 @@ router.post(
         const mentionsList = await Promise.all(
           bpIds.map(async (id: any) => {
             const person = await getBasecampPerson(
-              projectSettings.basecamp_token,
-              projectSettings.basecamp_account_id,
+              projectSettings.basecamp_token!,
+              projectSettings.basecamp_account_id!,
               Number(id),
             )
             if (person && person.attachable_sgid) {
@@ -1608,8 +1608,8 @@ router.post(
 
         await createBasecampComment({
           token: projectSettings.basecamp_token,
-          accountId: projectSettings.basecamp_account_id,
-          projectId: projectSettings.basecamp_project_id,
+          accountId: projectSettings.basecamp_account_id!,
+          projectId: projectSettings.basecamp_project_id!,
           recordingId: todolistId,
           content: basecampComment,
         })
@@ -1703,8 +1703,8 @@ router.post(
             if (u.basecamp_person_id) {
               try {
                 const person = await getBasecampPerson(
-                  projectSettings!.basecamp_token,
-                  projectSettings!.basecamp_account_id,
+                  projectSettings!.basecamp_token!,
+                  projectSettings!.basecamp_account_id!,
                   Number(u.basecamp_person_id),
                 )
                 if (person?.attachable_sgid)
@@ -1741,8 +1741,8 @@ router.post(
 
         await createBasecampComment({
           token: projectSettings.basecamp_token,
-          accountId: projectSettings.basecamp_account_id,
-          projectId: projectSettings.basecamp_project_id,
+          accountId: projectSettings.basecamp_account_id!,
+          projectId: projectSettings.basecamp_project_id!,
           recordingId: todolistId,
           content: basecampComment,
         })
