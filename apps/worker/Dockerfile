@@ -1,5 +1,5 @@
-# Use a clean, official Node image matching this setup
-FROM node:18-alpine AS base
+# Use official Playwright image which includes Node 20+ and system libraries
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS base
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 WORKDIR /app

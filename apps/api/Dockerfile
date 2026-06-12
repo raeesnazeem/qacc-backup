@@ -1,5 +1,5 @@
 # Use a clean, official Node image matching this setup
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 WORKDIR /app
