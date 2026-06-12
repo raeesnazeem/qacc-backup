@@ -95,6 +95,9 @@ export const DashboardPage = () => {
   // ---------------------------------------------------------------------------
   // DEVELOPER VIEW
   // ---------------------------------------------------------------------------
+
+  // DEVELOPER VIEW
+  // ---------------------------------------------------------------------------
   if (isDeveloper) {
     return (
       <div className="relative w-full h-full min-h-screen">
@@ -138,52 +141,62 @@ export const DashboardPage = () => {
                   </h3>
                 </div>
 
-                {data?.pre_release_projects?.length === 0 ? (
+                {data?.pre_release_projects?.filter((project) =>
+                  data?.my_tasks?.some(
+                    (task) => task.project_id === project.id,
+                  ),
+                ).length === 0 ? (
                   <div className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-800 rounded-lg p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                     No pending pre-release projects.
                   </div>
                 ) : (
-                  <div className="flex overflow-x-auto pb-6 gap-5 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-                    {data?.pre_release_projects?.map((project) => (
-                      <Link
-                        key={project.id}
-                        to={`/projects/${project.id}`}
-                        className="bg-slate-50 dark:bg-[#1D2A31] border-2 border-slate-300 dark:border-slate-800 rounded-lg p-4 shadow-lg hover:shadow-xl dark:shadow-sm dark:hover:shadow-md hover:border-accent dark:hover:border-accent transition-all group relative overflow-hidden min-w-[240px] flex-shrink-0 flex flex-col"
-                      >
-                        <div
-                          className="hidden dark:block absolute inset-0 rounded-lg pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
-                          style={{
-                            WebkitMask:
-                              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                            WebkitMaskComposite: "xor",
-                            maskComposite: "exclude",
-                          }}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {data?.pre_release_projects
+                      ?.filter((project) =>
+                        data?.my_tasks?.some(
+                          (task) => task.project_id === project.id,
+                        ),
+                      )
+                      .map((project) => (
+                        <Link
+                          key={project.id}
+                          to={`/projects/${project.id}`}
+                          className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-800 rounded-lg p-6 shadow-lg hover:shadow-xl dark:shadow-sm dark:hover:shadow-md hover:border-accent/20 transition-all group relative overflow-hidden flex flex-col h-full"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-base mb-0.5 group-hover:text-accent transition-colors leading-tight truncate">
-                          {project.name}
-                        </h4>
-                        <p className="text-[10px] text-sky-500 group-hover:text-sky-600 dark:text-sky-400 dark:group-hover:text-sky-300 transition-colors font-medium mb-4 uppercase tracking-wider">
-                          {project.client_name || "Internal"}
-                        </p>
+                          <div
+                            className="hidden dark:block absolute inset-0 rounded-lg pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
+                            style={{
+                              WebkitMask:
+                                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                              WebkitMaskComposite: "xor",
+                              maskComposite: "exclude",
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
+                          </div>
+                          <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xl mb-1 group-hover:text-accent transition-colors leading-tight">
+                            {project.name}
+                          </h4>
+                          <p className="text-xs text-sky-500 group-hover:text-sky-600 dark:text-sky-400 dark:group-hover:text-sky-300 transition-colors font-medium mb-6 uppercase tracking-wider">
+                            {project.client_name || "Internal"}
+                          </p>
 
-                        <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-50 dark:border-slate-800">
-                          <div className="flex flex-col">
-                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                              Open Issues
-                            </span>
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-200">
-                              {project.open_issues_count || 0}
-                            </span>
+                          <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50 dark:border-slate-800">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Open Issues
+                              </span>
+                              <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                                {project.open_issues_count || 0}
+                              </span>
+                            </div>
+                            <div className="bg-[#fff] dark:bg-slate-800 text-[#000] dark:text-slate-200 p-1.5 rounded-lg group-hover:bg-[#fff] group-hover:text-[#933] dark:group-hover:text-red-400 transition-colors">
+                              <ArrowUpRight size={18} />
+                            </div>
                           </div>
-                          <div className="bg-[#fff] dark:bg-slate-800 text-[#000] dark:text-slate-200 p-1.5 rounded-lg group-hover:bg-[#fff] group-hover:text-[#933] dark:group-hover:text-red-400 transition-colors">
-                            <ArrowUpRight size={14} />
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      ))}
                   </div>
                 )}
               </section>
@@ -197,52 +210,62 @@ export const DashboardPage = () => {
                   </h3>
                 </div>
 
-                {data?.post_release_projects?.length === 0 ? (
+                {data?.post_release_projects?.filter((project) =>
+                  data?.my_tasks?.some(
+                    (task) => task.project_id === project.id,
+                  ),
+                ).length === 0 ? (
                   <div className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-800 rounded-lg p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                     No post-release projects found.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {data?.post_release_projects?.map((project) => (
-                      <Link
-                        key={project.id}
-                        to={`/projects/${project.id}`}
-                        className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-800 rounded-lg p-6 shadow-lg hover:shadow-xl dark:shadow-sm dark:hover:shadow-md hover:border-accent/20 transition-all group relative overflow-hidden"
-                      >
-                        <div
-                          className="hidden dark:block absolute inset-0 rounded-lg pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
-                          style={{
-                            WebkitMask:
-                              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                            WebkitMaskComposite: "xor",
-                            maskComposite: "exclude",
-                          }}
+                    {data?.post_release_projects
+                      ?.filter((project) =>
+                        data?.my_tasks?.some(
+                          (task) => task.project_id === project.id,
+                        ),
+                      )
+                      .map((project) => (
+                        <Link
+                          key={project.id}
+                          to={`/projects/${project.id}`}
+                          className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-800 rounded-lg p-6 shadow-lg hover:shadow-xl dark:shadow-sm dark:hover:shadow-md hover:border-accent/20 transition-all group relative overflow-hidden"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
-                        </div>
-                        <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xl mb-1 group-hover:text-accent transition-colors leading-tight">
-                          {project.name}
-                        </h4>
-                        <p className="text-xs text-sky-500 group-hover:text-sky-600 dark:text-sky-400 dark:group-hover:text-sky-300 transition-colors font-medium mb-6 uppercase tracking-wider">
-                          {project.client_name || "Internal"}
-                        </p>
+                          <div
+                            className="hidden dark:block absolute inset-0 rounded-lg pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
+                            style={{
+                              WebkitMask:
+                                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                              WebkitMaskComposite: "xor",
+                              maskComposite: "exclude",
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
+                          </div>
+                          <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xl mb-1 group-hover:text-accent transition-colors leading-tight">
+                            {project.name}
+                          </h4>
+                          <p className="text-xs text-sky-500 group-hover:text-sky-600 dark:text-sky-400 dark:group-hover:text-sky-300 transition-colors font-medium mb-6 uppercase tracking-wider">
+                            {project.client_name || "Internal"}
+                          </p>
 
-                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50 dark:border-slate-800">
-                          <div className="flex flex-col">
-                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                              Open Issues
-                            </span>
-                            <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
-                              {project.open_issues_count || 0}
-                            </span>
+                          <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50 dark:border-slate-800">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                Open Issues
+                              </span>
+                              <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                                {project.open_issues_count || 0}
+                              </span>
+                            </div>
+                            <div className="bg-[#fff] dark:bg-slate-800 text-[#000] dark:text-slate-200 p-1.5 rounded-lg group-hover:bg-[#fff] group-hover:text-[#933] dark:group-hover:text-red-400 transition-colors">
+                              <ArrowUpRight size={18} />
+                            </div>
                           </div>
-                          <div className="bg-[#fff] dark:bg-slate-800 text-[#000] dark:text-slate-200 p-1.5 rounded-lg group-hover:bg-[#fff] group-hover:text-[#933] dark:group-hover:text-red-400 transition-colors">
-                            <ArrowUpRight size={18} />
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      ))}
                   </div>
                 )}
               </section>
@@ -256,8 +279,11 @@ export const DashboardPage = () => {
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {data?.my_tasks.length === 0 ? (
+                <div className="grid grid-cols-4 gap-4 bg-transparent dark:bg-[#1D2A31] border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-12 text-center">
+                  {data?.my_tasks?.filter(
+                    (task) =>
+                      task.status === "open" || task.status === "in_progress",
+                  ).length === 0 ? (
                     <div className="md:col-span-2 bg-slate-50 dark:bg-[#1D2A31] border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-12 text-center">
                       <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="w-8 h-8 text-slate-300" />
@@ -265,61 +291,67 @@ export const DashboardPage = () => {
                       <h4 className="font-bold text-slate-900 dark:text-slate-200">
                         All caught up!
                       </h4>
-                      <p className="text-slate-500 text-sm mt-1">
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                         No open tasks currently assigned to you.
                       </p>
                     </div>
                   ) : (
-                    data?.my_tasks.map((task) => (
-                      <Link
-                        key={task.id}
-                        to={`/tasks/${task.id}`}
-                        className="bg-slate-50 border border-slate-300 rounded-lg p-6 shadow-lg hover:shadow-xl dark:shadow-sm dark:hover:shadow-md hover:border-accent/20 transition-all group flex flex-col h-full relative overflow-hidden"
-                      >
-                        <div
-                          className="hidden dark:block absolute inset-0 rounded-lg pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
-                          style={{
-                            WebkitMask:
-                              "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                            WebkitMaskComposite: "xor",
-                            maskComposite: "exclude",
-                          }}
+                    data?.my_tasks
+                      ?.filter(
+                        (task) =>
+                          task.status === "open" ||
+                          task.status === "in_progress",
+                      )
+                      .map((task) => (
+                        <Link
+                          key={task.id}
+                          to={`/tasks/${task.id}`}
+                          className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-800 rounded-lg p-6 shadow-lg hover:shadow-xl dark:shadow-sm dark:hover:shadow-md hover:border-accent/20 transition-all group flex flex-col h-full relative overflow-hidden"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
-                        </div>
-                        <div className="flex justify-between items-start mb-4 relative z-10">
-                          <span
-                            className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full border ${
-                              task.severity === "critical"
-                                ? "bg-red-50 text-red-600 border-red-100"
-                                : task.severity === "high"
-                                  ? "bg-orange-50 text-orange-600 border-orange-100"
-                                  : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700"
-                            }`}
+                          <div
+                            className="hidden dark:block absolute inset-0 rounded-lg pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
+                            style={{
+                              WebkitMask:
+                                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                              WebkitMaskComposite: "xor",
+                              maskComposite: "exclude",
+                            }}
                           >
-                            {task.severity}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                            <Clock size={12} />
-                            {format(new Date(task.created_at), "MMM d")}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-slate-900 dark:text-slate-200 text-lg mb-2 group-hover:text-accent transition-colors line-clamp-2 leading-tight">
-                          {task.title}
-                        </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-6 line-clamp-2">
-                          {(task as any).projects?.name}
-                        </p>
-                        <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between text-accent font-bold text-[10px] uppercase tracking-widest">
-                          <span>View Details</span>
-                          <ChevronRight
-                            size={14}
-                            className="group-hover:translate-x-1 transition-transform"
-                          />
-                        </div>
-                      </Link>
-                    ))
+                            <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
+                          </div>
+                          <div className="flex justify-between items-start mb-4 relative z-10">
+                            <span
+                              className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full border ${
+                                task.severity === "critical"
+                                  ? "bg-red-50 text-red-600 border-red-100"
+                                  : task.severity === "high"
+                                    ? "bg-orange-50 text-orange-600 border-orange-100"
+                                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700"
+                              }`}
+                            >
+                              {task.severity}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                              <Clock size={12} />
+                              {format(new Date(task.created_at), "MMM d")}
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-slate-900 dark:text-slate-200 text-md mb-2 group-hover:text-accent transition-colors line-clamp-2 leading-tight">
+                            {task.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-6 line-clamp-2">
+                            {(task as any).projects?.name}
+                          </p>
+                          <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between text-accent font-bold text-[10px] uppercase tracking-widest">
+                            <span>View Details</span>
+                            <ChevronRight
+                              size={14}
+                              className="group-hover:translate-x-1 transition-transform"
+                            />
+                          </div>
+                        </Link>
+                      ))
                   )}
                 </div>
               </div>
@@ -330,21 +362,41 @@ export const DashboardPage = () => {
                 <Clock className="w-4 h-4 text-slate-400" />
                 Quick Stats
               </h3>
-              <div className="bg-slate-50 dark:bg-[#1D2A31] rounded-lg p-6 text-slate-900 dark:text-slate-200 space-y-6 shadow-xl">
+              <div className="bg-slate-50 dark:bg-[#1D2A31] rounded-lg p-6 text-slate-900 dark:text-slate-200 shadow-xl grid grid-cols-2 gap-y-6 gap-x-4">
                 <div>
                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
-                    Total Assigned
+                    To-Do
                   </p>
-                  <p className="text-3xl font-bold">
-                    {data?.my_tasks.length ?? 0}
+                  <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                    {data?.my_tasks?.filter((t) => t.status === "open")
+                      .length ?? 0}
                   </p>
                 </div>
-                <div className="pt-6 border-t border-white/10">
+                <div>
                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
-                    Open Issues Count
+                    In Progress
                   </p>
-                  <p className="text-3xl font-bold text-amber-400">
-                    {data?.open_issues ?? 0}
+                  <p className="text-2xl font-bold text-blue-500 dark:text-blue-400">
+                    {data?.my_tasks?.filter((t) => t.status === "in_progress")
+                      .length ?? 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
+                    Resolved
+                  </p>
+                  <p className="text-2xl font-bold text-green-500 dark:text-green-400">
+                    {data?.my_tasks?.filter((t) => t.status === "resolved")
+                      .length ?? 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
+                    Closed
+                  </p>
+                  <p className="text-2xl font-bold text-slate-400 dark:text-slate-500">
+                    {data?.my_tasks?.filter((t) => t.status === "closed")
+                      .length ?? 0}
                   </p>
                 </div>
               </div>

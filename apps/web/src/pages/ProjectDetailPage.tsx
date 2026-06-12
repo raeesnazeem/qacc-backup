@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react"
-import { useParams, useSearchParams, Link, useLocation, useNavigate } from "react-router-dom"
+import {
+  useParams,
+  useSearchParams,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom"
 import { useProject } from "../hooks/useProjects"
 import { useBasecampPeople } from "../hooks/useBasecampPeople"
 import {
@@ -30,7 +36,7 @@ export const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get("tab") || "overview"
-  const { canDo } = useRole()
+  const { canDo, isDeveloper } = useRole()
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -52,20 +58,32 @@ export const ProjectDetailPage = () => {
   useEffect(() => {
     if (activeTab === "tasks" && !location.state?.runsFixApplied) {
       const taskId = searchParams.get("taskId")
-      navigate(`/projects/${id}?tab=runs`, { 
-        replace: true,
-        state: { ...location.state, overviewFixApplied: true }
-      })
+      navigate(
+        isDeveloper
+          ? `/projects/${id}?tab=overview`
+          : `/projects/${id}?tab=runs`,
+        {
+          replace: true,
+          state: { ...location.state, overviewFixApplied: true },
+        },
+      )
+
       setTimeout(() => {
-        navigate(`/projects/${id}?tab=tasks${taskId ? `&taskId=${taskId}` : ''}`, {
-          state: { ...location.state, runsFixApplied: true }
-        })
+        navigate(
+          `/projects/${id}?tab=tasks${taskId ? `&taskId=${taskId}` : ""}`,
+          {
+            state: { ...location.state, runsFixApplied: true },
+          },
+        )
       }, 0)
-    } else if (["runs", "team", "settings"].includes(activeTab) && !location.state?.overviewFixApplied) {
+    } else if (
+      ["runs", "team", "settings"].includes(activeTab) &&
+      !location.state?.overviewFixApplied
+    ) {
       navigate(`/projects/${id}?tab=overview`, { replace: true })
       setTimeout(() => {
         navigate(`/projects/${id}?tab=${activeTab}`, {
-          state: { ...location.state, overviewFixApplied: true }
+          state: { ...location.state, overviewFixApplied: true },
         })
       }, 0)
     }
@@ -154,9 +172,13 @@ export const ProjectDetailPage = () => {
       <div className="flex items-center space-x-4">
         <Link
           to={
-            activeTab === 'tasks' ? `/projects/${id}?tab=runs` : 
-            ["runs", "team", "settings"].includes(activeTab) ? `/projects/${id}?tab=overview` : 
-            "/projects"
+            activeTab === "tasks"
+              ? isDeveloper
+                ? `/projects/${id}?tab=overview`
+                : `/projects/${id}?tab=runs`
+              : ["runs", "team", "settings"].includes(activeTab)
+                ? `/projects/${id}?tab=overview`
+                : "/projects"
           }
           className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-700 shadow-none hover:shadow-sm"
         >
@@ -170,18 +192,20 @@ export const ProjectDetailPage = () => {
             Projects
           </Link>
           <span>/</span>
-          {activeTab === 'tasks' ? (
+          {activeTab === "tasks" ? (
             <>
               <Link
-                to={`/projects/${id}?tab=runs`}
+                to={
+                  isDeveloper
+                    ? `/projects/${id}?tab=overview`
+                    : `/projects/${id}?tab=runs`
+                }
                 className="hover:text-accent dark:hover:text-accent transition-colors"
               >
                 {project.name}
               </Link>
               <span>/</span>
-              <span className="text-slate-900 dark:text-slate-200">
-                Tasks
-              </span>
+              <span className="text-slate-900 dark:text-slate-200">Tasks</span>
             </>
           ) : ["runs", "team", "settings"].includes(activeTab) ? (
             <>
@@ -193,7 +217,11 @@ export const ProjectDetailPage = () => {
               </Link>
               <span>/</span>
               <span className="text-slate-900 dark:text-slate-200">
-                {activeTab === "runs" ? "QA Runs" : activeTab === "team" ? "Team" : "Settings"}
+                {activeTab === "runs"
+                  ? "QA Runs"
+                  : activeTab === "team"
+                    ? "Team"
+                    : "Settings"}
               </span>
             </>
           ) : (

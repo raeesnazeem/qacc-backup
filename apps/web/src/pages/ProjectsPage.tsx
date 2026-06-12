@@ -1,14 +1,29 @@
 import { useState } from "react"
 import { useProjects } from "../hooks/useProjects"
+import { useDashboardStats } from "../hooks/useDashboard"
+import { useRole } from "../hooks/useRole"
 import { ProjectCard } from "../components/ProjectCard"
 import { CreateProjectModal } from "../components/CreateProjectModal"
 import { CanDo } from "../components/CanDo"
 import { Plus, FolderPlus, RefreshCcw, AlertCircle } from "lucide-react"
-
 export const ProjectsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { data: projects, isLoading, isError, error, refetch } = useProjects()
-
+  const { isDeveloper } = useRole()
+  const { data: dashboardData, isLoading: isDashboardLoading } =
+    useDashboardStats()
+  const {
+    data: allProjects,
+    isLoading: isProjectsLoading,
+    isError,
+    error,
+    refetch,
+  } = useProjects()
+  const isLoading = isProjectsLoading || (isDeveloper && isDashboardLoading)
+  const projects = isDeveloper
+    ? allProjects?.filter((project) =>
+        dashboardData?.my_tasks?.some((task) => task.project_id === project.id),
+      )
+    : allProjects
   const handleOpenModal = () => {
     setIsModalOpen(true)
   }

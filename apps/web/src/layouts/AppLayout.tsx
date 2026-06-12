@@ -90,7 +90,12 @@ export const AppLayout = () => {
     ...(isAdmin
       ? [{ to: "/all-tasks", label: "All tasks", icon: ListChecks }]
       : []),
-    { to: "/tasks", label: "Monitor", icon: Monitor },
+    {
+      to: "/tasks",
+      label:
+        role === "qa_engineer" || role === "developer" ? "My Tasks" : "Monitor",
+      icon: Monitor,
+    },
 
     { to: "/stats", label: "Stats", icon: BarChart2 },
     ...(!isDeveloper ? [{ to: "/team", label: "Team", icon: Users }] : []),

@@ -1,11 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-import 'dotenv/config';
+import { createClient } from "@supabase/supabase-js"
+import "dotenv/config"
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables in worker');
+  throw new Error("Missing Supabase environment variables in worker")
 }
 
 import ws from "ws"
@@ -13,9 +13,9 @@ import ws from "ws"
 export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
+    persistSession: false,
   },
   realtime: {
     transport: ws as any,
-  }
-});
+  },
+})
