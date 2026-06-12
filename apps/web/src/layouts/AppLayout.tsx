@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom"
-import { useUser, UserButton } from "@clerk/react"
+import { useUser, UserButton, useClerk } from "@clerk/react"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -34,7 +34,8 @@ export const AppLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isImpersonateOpen, setIsImpersonateOpen] = useState(false)
   const [impersonateSearch, setImpersonateSearch] = useState("")
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
+  const { signOut } = useClerk()
   const { role, profile, isLoading, isAdmin } = useRole()
   const navigate = useNavigate()
   const location = useLocation()
@@ -87,6 +88,36 @@ export const AppLayout = () => {
       }
     }
   }, [profile, isLoading, navigate, location.pathname])
+
+  // --- DOMAIN GUARD (growth99.com & growth99.net ONLY) ---
+  if (isLoaded && user) {
+    const email = user.primaryEmailAddress?.emailAddress || ""
+    if (!email.endsWith("@growth99.com") && !email.endsWith("@growth99.net")) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#131d22]">
+          <div className="bg-white dark:bg-[#1D2A31] p-8 rounded-xl shadow-lg border border-red-500/30 text-center max-w-md">
+            <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+              Access Denied
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              Only employees with a <b>@growth99.com</b> or <b>@growth99.net</b>{" "}
+              email address are permitted to access this portal.
+            </p>
+            <button
+              onClick={() => signOut()}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )
+    }
+  }
+  // -------------------------------------------------------
+
+  const isDeveloper = role === "developer"
 
   const isDeveloper = role === "developer"
 
