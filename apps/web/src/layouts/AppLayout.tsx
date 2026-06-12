@@ -119,8 +119,6 @@ export const AppLayout = () => {
 
   const isDeveloper = role === "developer"
 
-  const isDeveloper = role === "developer"
-
   const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/projects", label: "Projects", icon: FolderKanban },
