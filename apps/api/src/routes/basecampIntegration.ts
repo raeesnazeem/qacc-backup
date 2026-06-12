@@ -56,6 +56,18 @@ router.get("/callback", clerkAuth, async (req: Request, res: Response) => {
       },
     )
     const { access_token, refresh_token, expires_in } = tokenResponse.data
+
+    // Automatically fetch the user's Basecamp Identity ID
+    const authInfoResponse = await axios.get(
+      "https://launchpad.37signals.com/authorization.json",
+      {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      },
+    )
+    const personId = authInfoResponse.data?.identity?.id
+
     await supabase
       .from("users")
       .update({
@@ -64,6 +76,7 @@ router.get("/callback", clerkAuth, async (req: Request, res: Response) => {
         basecamp_token_expires_at: new Date(
           Date.now() + expires_in * 1000,
         ).toISOString(),
+        ...(personId ? { basecamp_person_id: String(personId) } : {}),
       })
       .eq("id", req.auth?.userId)
 
