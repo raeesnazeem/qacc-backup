@@ -63,9 +63,13 @@ router.get("/callback", clerkAuth, async (req: Request, res: Response) => {
       {
         headers: {
           Authorization: `Bearer ${access_token}`,
+          "User-Agent": "QACC (raees.nazeem@growth99.com)",
         },
       },
     )
+
+    console.log("37SIGNALS IDENTITY RESPONSE:", authInfoResponse.data)
+
     const personId = authInfoResponse.data?.identity?.id
 
     await supabase

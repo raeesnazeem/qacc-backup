@@ -199,3 +199,7 @@ apps/web/src/components/FindingCardBackup.tsx
 *.recordings
 Dockerfile.recordings
 dockefile.recordings
+
+# Test DB files
+test-db.ts
+apps/api/test-db.ts
