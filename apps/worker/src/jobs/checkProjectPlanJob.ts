@@ -30,12 +30,21 @@ export async function processCheckProjectPlanJob(job: Job) {
       "basecamp_token_encrypted, basecamp_account_id, basecamp_project_id",
     )
     .eq("project_id", projectId)
-    .single()
+    .limit(1)
+    .maybeSingle()
 
-  if (settingsError || !projectSettings) {
+  if (settingsError) {
     throw new Error(
-      `Failed to fetch project settings: ${settingsError?.message || "No settings found"}`,
+      `Failed to fetch project settings: ${settingsError.message}`,
     )
+  }
+
+  if (!projectSettings) {
+    logger.warn(
+      { projectId },
+      "No project settings found. Skipping Basecamp checks.",
+    )
+    return
   }
 
   const { basecamp_token_encrypted, basecamp_account_id, basecamp_project_id } =

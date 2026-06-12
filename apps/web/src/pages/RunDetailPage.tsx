@@ -216,7 +216,7 @@ export const RunDetailPage = () => {
           ? ((homepage.progress || 0) / 100) * 50
           : 0
 
-        return isRunCompleted ? 100 : baseProgress + homeProgress
+        return baseProgress + homeProgress
       }
 
       return (completedPages / totalPages) * 100
@@ -250,13 +250,11 @@ export const RunDetailPage = () => {
     )
 
     const homepageProgress = homepage
-      ? isRunCompleted
-        ? 100
-        : isApiOnlyRun
-          ? homepage.progress || 0 // Strictly respect dynamic progress for API runs
-          : homepage.status === "done" || homepage.status === "checked"
-            ? 100
-            : homepage.progress || 0
+      ? isApiOnlyRun
+        ? homepage.progress || 0
+        : homepage.status === "done" || homepage.status === "checked"
+          ? 100
+          : homepage.progress || 0
       : 0
 
     let totalCheckProgress = 0
@@ -274,14 +272,28 @@ export const RunDetailPage = () => {
       : progress
   }, [run?.enabled_checks, run?.pages, run?.status, run?.site_url, progress])
 
+  const computedAverageProgress = Math.min(
+    100,
+    Math.max(0, Math.round(trueAverageProgress)),
+  )
+  const isPartial =
+    run?.status === "completed" &&
+    findingsLoaded &&
+    computedAverageProgress < 100
+
   const displayStatus =
-    run?.status === "completed" && !findingsLoaded ? "running" : run?.status
+    run?.status === "completed" && !findingsLoaded
+      ? "running"
+      : isPartial
+        ? "partial"
+        : run?.status
+
   const displayProgress =
     run?.status === "completed" && !findingsLoaded ? 99 : trueAverageProgress
 
   const safeDisplayProgress =
     run?.status === "completed" && findingsLoaded
-      ? 100
+      ? computedAverageProgress
       : Math.min(99, Math.max(1, Math.round(displayProgress)))
 
   const { data: tasksData } = useTasks({ projectId: projectId! })
@@ -682,6 +694,8 @@ export const RunDetailPage = () => {
     switch (status) {
       case "completed":
         return <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+      case "partial":
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />
       case "running":
         return (
           <div className="relative flex h-3 w-3 mr-1">
@@ -1529,18 +1543,17 @@ export const RunDetailPage = () => {
                                     </span>
                                     <span className="font-bold">
                                       {run.status === "cancelled" ||
-                                      run.status === "failed"
-                                        ? `${checkProgress}% (Cancelled)`
-                                        : isRunCompleted
-                                          ? "completed 100%"
-                                          : `${checkProgress}%`}
+                                      run.status === "failed" ||
+                                      (isRunCompleted && checkProgress < 100)
+                                        ? `${checkProgress}% ${checkProgress < 100 ? "(Failed)" : ""}`
+                                        : `${checkProgress}%`}
                                     </span>
                                   </div>
                                   <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 p-1 mb-1">
                                     <div
-                                      className="h-full rounded-full transition-all duration-500 ease-out shadow-sm bg-accent"
+                                      className={`h-full rounded-full transition-all duration-500 ease-out shadow-sm ${checkProgress < 100 && (run.status === "completed" || run.status === "failed") ? "bg-red-500" : "bg-accent"}`}
                                       style={{
-                                        width: `${run.status === "cancelled" || run.status === "failed" ? checkProgress : isRunCompleted ? 100 : checkProgress}%`,
+                                        width: `${checkProgress}%`,
                                       }}
                                     />
                                   </div>
@@ -1584,18 +1597,17 @@ export const RunDetailPage = () => {
 
                                     <span className="font-bold">
                                       {run.status === "cancelled" ||
-                                      run.status === "failed"
-                                        ? `${pageProgress}% (Cancelled)`
-                                        : isCompleted
-                                          ? "completed 100%"
-                                          : `${pageProgress}%`}
+                                      run.status === "failed" ||
+                                      (isCompleted && pageProgress < 100)
+                                        ? `${pageProgress}% ${pageProgress < 100 ? "(Failed)" : ""}`
+                                        : `${pageProgress}%`}
                                     </span>
                                   </div>
                                   <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 p-1 mb-1">
                                     <div
-                                      className="h-full rounded-full transition-all duration-500 ease-out shadow-sm bg-accent"
+                                      className={`h-full rounded-full transition-all duration-500 ease-out shadow-sm ${pageProgress < 100 && (run.status === "completed" || run.status === "failed") ? "bg-red-500" : "bg-accent"}`}
                                       style={{
-                                        width: `${run.status === "cancelled" || run.status === "failed" ? pageProgress : isCompleted ? 100 : pageProgress}%`,
+                                        width: `${pageProgress}%`,
                                       }}
                                     />
                                   </div>
