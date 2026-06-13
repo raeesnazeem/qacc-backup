@@ -1738,25 +1738,29 @@ router.post(
           .single(),
       ])
 
+      const isFeedback = task.title.includes("[Feedback]")
+
       const currentUser = currentUserResult.data
       let activeBasecampToken = currentUser?.basecamp_access_token
 
-      if (!activeBasecampToken) {
-        if (
-          req.auth?.role === "super_admin" ||
-          currentUser?.role === "super_admin"
-        ) {
-          activeBasecampToken = projectSettings?.basecamp_token
-        } else {
-          return res.status(403).json({
-            error:
-              "Please connect your personal Basecamp account to push tasks.",
-          })
+      if (!isFeedback) {
+        if (!activeBasecampToken) {
+          if (
+            req.auth?.role === "super_admin" ||
+            currentUser?.role === "super_admin"
+          ) {
+            activeBasecampToken = projectSettings?.basecamp_token
+          } else {
+            return res.status(403).json({
+              error:
+                "Please connect your personal Basecamp account to push tasks.",
+            })
+          }
         }
-      }
 
-      if (!activeBasecampToken) {
-        return res.status(400).json({ error: "Basecamp not configured" })
+        if (!activeBasecampToken) {
+          return res.status(400).json({ error: "Basecamp not configured" })
+        }
       }
 
       // 2. Update status to resolved for all siblings
@@ -1768,7 +1772,9 @@ router.post(
           `finding_id.eq.${task.finding_id}${task.finding_id ? "" : ",title.eq." + task.title}`,
         )
 
-      const siblingIds = (siblings || []).map((s) => s.id)
+      const siblingIds = isFeedback
+        ? Array.from(new Set([...(siblings || []).map((s) => s.id), task.id]))
+        : (siblings || []).map((s) => s.id)
 
       await supabase
         .from("tasks")
@@ -1795,11 +1801,11 @@ router.post(
       let todolistId = task.basecamp_task_id
       if (!todolistId) {
         todolistId = task.projects.is_post_release
-          ? projectSettings.basecamp_post_todolist_id
-          : projectSettings.basecamp_todolist_id
+          ? projectSettings?.basecamp_post_todolist_id
+          : projectSettings?.basecamp_todolist_id
       }
 
-      if (todolistId) {
+      if (todolistId && !isFeedback) {
         const issueMatch = task.title.match(/Issue #(\d+)/)
         const issueNumber = issueMatch ? issueMatch[1] : "N/A"
 
@@ -1812,8 +1818,8 @@ router.post(
 
         await createBasecampComment({
           token: activeBasecampToken,
-          accountId: projectSettings.basecamp_account_id!,
-          projectId: projectSettings.basecamp_project_id!,
+          accountId: projectSettings?.basecamp_account_id!,
+          projectId: projectSettings?.basecamp_project_id!,
           recordingId: todolistId,
           content: basecampComment,
         })
@@ -1834,7 +1840,6 @@ router.post(
 router.post(
   "/tasks/:id/not-resolved",
   clerkAuth,
-  requireRole("qa_engineer"),
   async (req: Request, res: Response) => {
     const { id } = req.params
     const { comment, assignees } = req.body
@@ -1850,6 +1855,25 @@ router.post(
       if (taskError || !task)
         return res.status(404).json({ error: "Task not found" })
 
+      const isFeedback = task.title.includes("[Feedback]")
+
+      // Role Check: Only qa_engineers (or higher) or developers on feedback tasks can mark as not resolved
+      const role = req.auth?.role || "developer"
+      const isQaOrHigher = [
+        "super_admin",
+        "admin",
+        "sub_admin",
+        "project_manager",
+        "qa_engineer",
+      ].includes(role)
+      if (!isQaOrHigher && !(role === "developer" && isFeedback)) {
+        return res
+          .status(403)
+          .json({
+            error: "Insufficient permissions. Required: qa_engineer or higher",
+          })
+      }
+
       const [projectSettings, currentUserResult] = await Promise.all([
         getProjectSettings(task.project_id),
         supabase
@@ -1862,22 +1886,24 @@ router.post(
       const currentUser = currentUserResult.data
       let activeBasecampToken = currentUser?.basecamp_access_token
 
-      if (!activeBasecampToken) {
-        if (
-          req.auth?.role === "super_admin" ||
-          currentUser?.role === "super_admin"
-        ) {
-          activeBasecampToken = projectSettings?.basecamp_token
-        } else {
-          return res.status(403).json({
-            error:
-              "Please connect your personal Basecamp account to push tasks.",
-          })
+      if (!isFeedback) {
+        if (!activeBasecampToken) {
+          if (
+            req.auth?.role === "super_admin" ||
+            currentUser?.role === "super_admin"
+          ) {
+            activeBasecampToken = projectSettings?.basecamp_token
+          } else {
+            return res.status(403).json({
+              error:
+                "Please connect your personal Basecamp account to push tasks.",
+            })
+          }
         }
-      }
 
-      if (!activeBasecampToken) {
-        return res.status(400).json({ error: "Basecamp not configured" })
+        if (!activeBasecampToken) {
+          return res.status(400).json({ error: "Basecamp not configured" })
+        }
       }
 
       // 2. Update status to in_progress for all siblings
@@ -1889,7 +1915,9 @@ router.post(
           `finding_id.eq.${task.finding_id}${task.finding_id ? "" : ",title.eq." + task.title}`,
         )
 
-      const siblingIds = (siblings || []).map((s) => s.id)
+      const siblingIds = isFeedback
+        ? Array.from(new Set([...(siblings || []).map((s) => s.id), task.id]))
+        : (siblings || []).map((s) => s.id)
 
       await supabase
         .from("tasks")
@@ -1916,11 +1944,11 @@ router.post(
       let todolistId = task.basecamp_task_id
       if (!todolistId) {
         todolistId = task.projects.is_post_release
-          ? projectSettings.basecamp_post_todolist_id
-          : projectSettings.basecamp_todolist_id
+          ? projectSettings?.basecamp_post_todolist_id
+          : projectSettings?.basecamp_todolist_id
       }
 
-      if (todolistId) {
+      if (todolistId && !isFeedback) {
         // Get mentions
         const { data: userList } = await supabase
           .from("users")

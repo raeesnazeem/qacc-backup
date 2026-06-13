@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useRole } from "../hooks/useRole"
 import { useQuery } from "@tanstack/react-query"
 import { useAuthAxios } from "../lib/useAuthAxios"
+import { useRealtimeTasks } from "../hooks/useRealtimeTasks"
 import toast from "react-hot-toast"
 import {
   Upload,
@@ -38,6 +39,21 @@ const getSeverityColor = (severity: string) => {
   }
 }
 
+const getTaskStatusColor = (status: string) => {
+  switch (status) {
+    case "open":
+      return "text-blue-500 dark:text-blue-400"
+    case "in_progress":
+      return "text-amber-500 dark:text-amber-400"
+    case "resolved":
+      return "text-emerald-500 dark:text-emerald-400"
+    case "closed":
+      return "text-purple-500 dark:text-purple-400"
+    default:
+      return "text-slate-500 dark:text-slate-400"
+  }
+}
+
 const groupTasksForUI = (tasks: any[]) => {
   const groups = new Map<string, any>()
   tasks.forEach((task) => {
@@ -70,11 +86,37 @@ const groupTasksForUI = (tasks: any[]) => {
 }
 
 const KanbanCard = ({ task, onClick, role, onDelete, onNotResolved }: any) => {
+  const { profile } = useRole()
   const isQA = role === "qa_engineer"
   const isSuperAdmin = role === "super_admin"
   const isAdmin = role === "admin" || role === "super_admin"
   const isNonAdmin = !isAdmin
   const { mutate: updateTask } = useUpdateTask()
+
+  const isCreator =
+    task.creator?.id === profile?.id || task.created_by === profile?.id
+  const canCancel =
+    isNonAdmin && isCreator && ["open", "in_progress"].includes(task.status)
+
+  const withdrawnMatch = task.description?.match(/\[WITHDRAWN_BY:\s*(.+)\]/)
+  const isWithdrawn = !!withdrawnMatch
+  const withdrawnBy = withdrawnMatch ? withdrawnMatch[1] : ""
+
+  const handleCancelSubmission = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm("Are you sure you want to cancel this submission?"))
+      return
+
+    updateTask({
+      id: task.id,
+      data: {
+        status: "resolved",
+        description:
+          (task.description || "") +
+          `\n\n[WITHDRAWN_BY: ${profile?.full_name || profile?.email || "User"}]`,
+      },
+    })
+  }
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     e.stopPropagation()
@@ -110,7 +152,12 @@ const KanbanCard = ({ task, onClick, role, onDelete, onNotResolved }: any) => {
           value={task.severity || "medium"}
           onChange={handleSeverityChange}
           onClick={(e) => e.stopPropagation()}
-          className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border cursor-pointer appearance-none outline-none ${getSeverityColor(task.severity)}`}
+          disabled={task.status === "resolved" || task.status === "closed"}
+          className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border appearance-none outline-none text-center ${getSeverityColor(task.severity)} ${
+            task.status === "resolved" || task.status === "closed"
+              ? "cursor-not-allowed opacity-70"
+              : "cursor-pointer"
+          }`}
         >
           <option value="critical">CRITICAL</option>
           <option value="high">HIGH</option>
@@ -126,14 +173,16 @@ const KanbanCard = ({ task, onClick, role, onDelete, onNotResolved }: any) => {
             onChange={handleStatusChange}
             onClick={(e) => e.stopPropagation()}
             disabled={isNonAdmin}
-            className={`text-[10px] font-bold uppercase tracking-wider bg-slate-50 dark:bg-[#1d2a31] border-none rounded px-1.5 py-0.5 focus:ring-0 appearance-none text-slate-400 transition-colors ${
-              isNonAdmin ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:text-slate-600 dark:hover:text-slate-300"
+            className={`text-[10px] font-bold uppercase tracking-wider bg-slate-50 dark:bg-[#1d2a31] border-none rounded px-1.5 py-0.5 focus:ring-0 appearance-none transition-colors ${getTaskStatusColor(task.status)} ${
+              isNonAdmin ? "cursor-not-allowed opacity-70" : "cursor-pointer"
             }`}
           >
             <option value="open">To Do</option>
             <option value="in_progress">In Progress</option>
             <option value="resolved">Resolved</option>
-            {(isSuperAdmin || task.status === "closed") && <option value="closed">Closed</option>}
+            {(isSuperAdmin || task.status === "closed") && (
+              <option value="closed">Closed</option>
+            )}
           </select>
           {isQA && (
             <button
@@ -148,20 +197,32 @@ const KanbanCard = ({ task, onClick, role, onDelete, onNotResolved }: any) => {
           )}
         </div>
       </div>
-      <h4 className={`text-sm font-bold text-slate-900 dark:text-slate-200 group-hover:text-accent transition-colors leading-tight relative z-10 ${task.status === "closed" ? "mb-1" : "mb-4"}`}>
+      <h4
+        className={`text-sm font-bold text-slate-900 dark:text-slate-200 group-hover:text-accent transition-colors leading-tight relative z-10 ${task.status === "closed" || (task.status === "resolved" && isWithdrawn) ? "mb-1" : "mb-4"}`}
+      >
         {task.title}
       </h4>
-      {task.status === "closed" && (
+      {task.status === "closed" && !isWithdrawn && (
         <p className="text-[10px] font-bold text-slate-400 mb-4 relative z-10">
           Closed by Super Admin
         </p>
       )}
+      {task.status === "closed" && isWithdrawn && (
+        <p className="text-[10px] font-bold text-slate-400 mb-4 relative z-10">
+          Issue withdrawn by {withdrawnBy}
+        </p>
+      )}
+      {task.status === "resolved" && isWithdrawn && (
+        <p className="text-[10px] font-bold text-red-500 mb-4 relative z-10">
+          {withdrawnBy} revoked.
+        </p>
+      )}
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50 dark:border-slate-700 relative z-10">
         <div className="flex items-center space-x-3 text-slate-400">
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 text-sky-500 dark:text-sky-400">
             <MessageSquare className="w-3 h-3" />
             <span className="text-[10px] font-bold">
-              {task.comments?.length || 0}
+              {(task.comments?.length || 0) + (task.rebuttals?.length || 0)}
             </span>
           </div>
           {task.basecamp_url && (
@@ -169,7 +230,15 @@ const KanbanCard = ({ task, onClick, role, onDelete, onNotResolved }: any) => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {task.status === "resolved" && isNonAdmin && (
+          {canCancel && (
+            <button
+              onClick={handleCancelSubmission}
+              className="text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-1 rounded-md transition-colors"
+            >
+              Cancel Submission
+            </button>
+          )}
+          {task.status === "resolved" && isNonAdmin && !isWithdrawn && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -196,7 +265,14 @@ const KanbanCard = ({ task, onClick, role, onDelete, onNotResolved }: any) => {
   )
 }
 
-const KanbanColumn = ({ title, tasks, onTaskClick, role, onDelete, onNotResolved }: any) => (
+const KanbanColumn = ({
+  title,
+  tasks,
+  onTaskClick,
+  role,
+  onDelete,
+  onNotResolved,
+}: any) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between px-2">
       <h3 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-widest text-[11px] flex items-center gap-2">
@@ -322,6 +398,9 @@ export const FeedbackPage = () => {
   const [notResolvedTask, setNotResolvedTask] = useState<any>(null)
   const { mutate: deleteTask } = useDeleteTask()
 
+  // Enable real-time updates for tasks
+  useRealtimeTasks()
+
   const { data: tasksData, isLoading: isTasksLoading } = useQuery({
     queryKey: ["tasks", "feedback-tasks"],
     queryFn: async () => {
@@ -366,7 +445,11 @@ export const FeedbackPage = () => {
     return () => window.removeEventListener("paste", handlePaste)
   }, [])
 
-  if (isLoading || (isAdmin && isTasksLoading) || (!isAdmin && isUserTasksLoading)) {
+  if (
+    isLoading ||
+    (isAdmin && isTasksLoading) ||
+    (!isAdmin && isUserTasksLoading)
+  ) {
     return (
       <div className="max-w-7xl mx-auto space-y-12 animate-in fade-in duration-500 pb-20 p-8">
         <Skeleton className="h-10 w-64" />
@@ -576,7 +659,7 @@ export const FeedbackPage = () => {
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
           >
-            <MessageSquare size={14} />
+            <ClipboardList size={14} />
             Report Issue
           </button>
           <button
@@ -587,7 +670,7 @@ export const FeedbackPage = () => {
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
           >
-            <ClipboardList size={14} />
+            <MessageSquare size={14} />
             Feedback History
           </button>
         </div>
@@ -636,14 +719,18 @@ export const FeedbackPage = () => {
                     <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       Stage
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={stage}
                       onChange={(e) => setStage(e.target.value)}
-                      className="w-full bg-[#F2F6FC] dark:bg-[#1D2A31] border border-slate-400/40 dark:border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-accent focus:border-transparent outline-none"
-                      placeholder="e.g. Production, Staging"
+                      className="w-full bg-[#F2F6FC] dark:bg-[#1D2A31] border border-slate-400/40 dark:border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-accent focus:border-transparent outline-none appearance-none"
                       required
-                    />
+                    >
+                      <option value="" disabled>
+                        Select stage...
+                      </option>
+                      <option value="Pre">Pre-Release</option>
+                      <option value="Post">Post-Release</option>
+                    </select>
                   </div>
                 </div>
 
@@ -746,11 +833,6 @@ export const FeedbackPage = () => {
                     disabled={isSubmitting}
                     className="btn-unified flex items-center justify-center space-x-2 w-full sm:w-auto"
                   >
-                    {isSubmitting ? (
-                      <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
                     <span>
                       {isSubmitting ? "Submitting..." : "Submit Feedback"}
                     </span>

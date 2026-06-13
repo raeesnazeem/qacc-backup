@@ -202,10 +202,10 @@ const KanbanCard = ({
       </h4>
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50 dark:border-slate-700 relative z-10">
         <div className="flex items-center space-x-3 text-slate-400">
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 text-sky-500 dark:text-sky-400">
             <MessageSquare className="w-3 h-3" />
             <span className="text-[10px] font-bold">
-              {task.comments?.length || 0}
+              {(task.comments?.length || 0) + (task.rebuttals?.length || 0)}
             </span>
           </div>
           {task.basecamp_url && (

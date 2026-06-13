@@ -64,6 +64,7 @@ router.post(
       // One Finding = One Issue Number, regardless of number of assignees (rows).
       
       const cleanTitle = title.replace(/^Issue #\d+:?\s*/, "");
+      const isFeedback = cleanTitle.includes("[Feedback]");
       
       // Fetch all tasks for the project to determine unique issue count and check for existing numbers
       const { data: allProjectTasks, error: fetchError } = await supabase
@@ -81,11 +82,15 @@ router.post(
 
       allProjectTasks?.forEach(t => {
         const taskCleanTitle = t.title.replace(/^Issue #\d+:?\s*/, "");
-        const key = t.finding_id || taskCleanTitle;
-        uniqueIssues.add(key);
+        const taskIsFeedback = taskCleanTitle.includes("[Feedback]");
+        
+        if (!taskIsFeedback) {
+          const key = t.finding_id || taskCleanTitle;
+          uniqueIssues.add(key);
+        }
 
         // Check if this new task matches an existing issue
-        if (!existingNumber) {
+        if (!existingNumber && !isFeedback && !taskIsFeedback) {
           const isMatch = finding_id 
             ? t.finding_id === finding_id 
             : taskCleanTitle.toLowerCase() === cleanTitle.toLowerCase();
@@ -102,8 +107,11 @@ router.post(
         }
       });
 
-      const issueNumber = existingNumber || (uniqueIssues.size + 1);
-      const finalTitle = `Issue #${issueNumber}: ${cleanTitle}`;
+      let finalTitle = cleanTitle;
+      if (!isFeedback) {
+        const issueNumber = existingNumber || (uniqueIssues.size + 1);
+        finalTitle = `Issue #${issueNumber}: ${cleanTitle}`;
+      }
 
       const { data: task, error } = await supabase
         .from('tasks')
@@ -229,7 +237,9 @@ router.get('/', clerkAuth, async (req: Request, res: Response) => {
         *,
         users:assigned_to (id, full_name, email),
         creator:created_by (id, full_name, email),
-        projects:project_id (id, name, org_id)
+        projects:project_id (id, name, org_id),
+        comments(id),
+        rebuttals(id)
       `, { count: 'exact' });
 
     // Filter by organization
@@ -388,7 +398,7 @@ router.patch(
       // 1. Get the current task to find siblings
       const { data: currentTask } = await supabase
         .from('tasks')
-        .select('finding_id, title, project_id')
+        .select('finding_id, title, project_id, comments(id), rebuttals(id)')
         .eq('id', id)
         .single();
 

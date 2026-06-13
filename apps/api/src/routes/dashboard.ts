@@ -117,7 +117,7 @@ router.get("/stats", clerkAuth, async (req: Request, res: Response) => {
     const enrichedProjects = (projectsData || []).map((p: any) => ({
       ...p,
       open_issues_count:
-        p.tasks?.filter((t: any) => ["open", "in_progress"].includes(t.status))
+        p.tasks?.filter((t: any) => ["open", "in_progress"].includes(t.status) && !t.title?.includes("[Feedback]"))
           .length || 0,
       total_runs_count: p.qa_runs?.length || 0,
       active_runs_count:
@@ -142,7 +142,8 @@ router.get("/stats", clerkAuth, async (req: Request, res: Response) => {
           (p.tasks?.filter(
             (t: any) =>
               ["open", "in_progress"].includes(t.status) &&
-              t.assigned_to === supabaseUserId,
+              t.assigned_to === supabaseUserId &&
+              !t.title?.includes("[Feedback]"),
           ).length || 0),
         0,
       )
@@ -170,6 +171,7 @@ router.get("/stats", clerkAuth, async (req: Request, res: Response) => {
       .select("*", { count: "exact", head: true })
       .eq("assigned_to", supabaseUserId)
       .in("status", ["open", "in_progress"])
+      .not("title", "ilike", "[Feedback]%")
 
     // 5. Recent Runs (limit 5) - Fetch directly for ordering
     const { data: recentRuns } = await supabase
@@ -185,6 +187,7 @@ router.get("/stats", clerkAuth, async (req: Request, res: Response) => {
       .select("*, projects(name)")
       .eq("assigned_to", supabaseUserId)
       .in("status", ["open", "in_progress"])
+      .not("title", "ilike", "[Feedback]%")
       .order("created_at", { ascending: false })
       .limit(5)
 

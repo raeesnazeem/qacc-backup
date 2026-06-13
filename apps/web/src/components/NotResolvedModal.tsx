@@ -35,6 +35,7 @@ export const NotResolvedModal = ({
 
   const issueMatch = task.title.match(/Issue #(\d+)/)
   const issueNumber = issueMatch ? issueMatch[1] : null
+  const isFeedbackTask = task.title.includes("[Feedback]")
 
   const handleConfirm = () => {
     if (!comment.trim()) return
@@ -89,68 +90,70 @@ export const NotResolvedModal = ({
 
         <div className="p-8 overflow-y-auto space-y-8">
           {/* Assignees Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Assignees
-              </span>
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                {assigneeIds.length} Developer(s)
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {assigneeIds.map((userId) => {
-                const member = project?.project_members.find(
-                  (m) => m.user_id === userId,
-                )
-                const taskAssignee = task.assignees?.find(
-                  (a: any) => (a.userId || a.id) === userId,
-                )
-                const displayName =
-                  member?.users.full_name ||
-                  (taskAssignee as any)?.name ||
-                  (taskAssignee as any)?.full_name ||
-                  "Unknown"
+          {!isFeedbackTask && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Assignees
+                </span>
+                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                  {assigneeIds.length} Developer(s)
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {assigneeIds.map((userId) => {
+                  const member = project?.project_members.find(
+                    (m) => m.user_id === userId,
+                  )
+                  const taskAssignee = task.assignees?.find(
+                    (a: any) => (a.userId || a.id) === userId,
+                  )
+                  const displayName =
+                    member?.users.full_name ||
+                    (taskAssignee as any)?.name ||
+                    (taskAssignee as any)?.full_name ||
+                    "Unknown"
 
-                return (
-                  <div
-                    key={userId}
-                    className="flex items-center gap-2 bg-accent/5 border border-accent/20 text-accent px-3 py-1.5 rounded-lg"
-                  >
-                    <span className="text-[11px] font-bold uppercase tracking-wider">
-                      {displayName}
-                    </span>
-                    <button
-                      onClick={() => toggleAssignee(userId)}
-                      className="p-0.5 hover:bg-accent/10 rounded-full transition-colors"
+                  return (
+                    <div
+                      key={userId}
+                      className="flex items-center gap-2 bg-accent/5 border border-accent/20 text-accent px-3 py-1.5 rounded-lg"
                     >
-                      <X size={12} strokeWidth={3} />
-                    </button>
-                  </div>
-                )
-              })}
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        {displayName}
+                      </span>
+                      <button
+                        onClick={() => toggleAssignee(userId)}
+                        className="p-0.5 hover:bg-accent/10 rounded-full transition-colors"
+                      >
+                        <X size={12} strokeWidth={3} />
+                      </button>
+                    </div>
+                  )
+                })}
 
-              <div className="relative">
-                <select
-                  value=""
-                  onChange={(e) => toggleAssignee(e.target.value)}
-                  className="appearance-none bg-slate-50 border-2 border-dashed border-slate-200 hover:border-accent hover:text-accent text-slate-400 text-[10px] font-bold uppercase tracking-widest rounded-xl px-4 py-1.5 pr-10 cursor-pointer transition-all focus:outline-none"
-                >
-                  <option value="">+ Tag Someone</option>
-                  {project?.project_members
-                    .filter((m) => !assigneeIds.includes(m.user_id))
-                    .map((m) => (
-                      <option key={m.user_id} value={m.user_id}>
-                        {m.users.full_name}
-                      </option>
-                    ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                  <ChevronDown size={14} />
+                <div className="relative">
+                  <select
+                    value=""
+                    onChange={(e) => toggleAssignee(e.target.value)}
+                    className="appearance-none bg-slate-50 border-2 border-dashed border-slate-200 hover:border-accent hover:text-accent text-slate-400 text-[10px] font-bold uppercase tracking-widest rounded-xl px-4 py-1.5 pr-10 cursor-pointer transition-all focus:outline-none"
+                  >
+                    <option value="">+ Tag Someone</option>
+                    {project?.project_members
+                      .filter((m) => !assigneeIds.includes(m.user_id))
+                      .map((m) => (
+                        <option key={m.user_id} value={m.user_id}>
+                          {m.users.full_name}
+                        </option>
+                      ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                    <ChevronDown size={14} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Feedback Section */}
           <div className="space-y-3">
@@ -183,8 +186,8 @@ export const NotResolvedModal = ({
               <span className="animate-pulse">Processing...</span>
             ) : (
               <>
-                <span>Confirm & Push</span>
-                <Send size={14} />
+                <span>{isFeedbackTask ? "Confirm" : "Confirm & Push"}</span>
+                {!isFeedbackTask && <Send size={14} />}
               </>
             )}
           </button>

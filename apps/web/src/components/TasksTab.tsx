@@ -35,6 +35,16 @@ interface TasksTabProps {
   project?: ProjectWithMembers
 }
 
+const getTaskStatusColor = (status: string) => {
+  switch (status) {
+    case "open": return "text-blue-500 dark:text-blue-400"
+    case "in_progress": return "text-amber-500 dark:text-amber-400"
+    case "resolved": return "text-emerald-500 dark:text-emerald-400"
+    case "closed": return "text-purple-500 dark:text-purple-400"
+    default: return "text-slate-500 dark:text-slate-400"
+  }
+}
+
 export const TasksTab = ({ project }: TasksTabProps) => {
   const { data: tasksData, isLoading } = useTasks({ projectId: project?.id })
   const tasks = (tasksData?.data || []).filter((task: any) => !task.title?.includes("[Feedback]"))
@@ -378,7 +388,7 @@ export const TasksTab = ({ project }: TasksTabProps) => {
                                 e.target.value as TaskStatus,
                               )
                             }
-                            className="text-[10px] font-bold uppercase tracking-wider bg-slate-50 dark:bg-[#1d2a31] border-none rounded px-1.5 py-0.5 focus:ring-0 cursor-pointer appearance-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                            className={`text-[10px] font-bold uppercase tracking-wider bg-slate-50 dark:bg-[#1d2a31] border-none rounded px-1.5 py-0.5 focus:ring-0 cursor-pointer appearance-none transition-colors ${getTaskStatusColor(task.status)}`}
                           >
                             {columns.map((col) => (
                               <option key={col.id} value={col.id}>
@@ -422,10 +432,10 @@ export const TasksTab = ({ project }: TasksTabProps) => {
                       </h4>
                       <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50 relative z-10">
                         <div className="flex items-center space-x-3 text-slate-400">
-                          <div className="flex items-center space-x-1">
+                          <div className="flex items-center space-x-1 text-sky-500 dark:text-sky-400">
                             <MessageSquare className="w-3 h-3" />
                             <span className="text-[10px] font-bold">
-                              {(task as any).comments?.length || 0}
+                              {((task as any).comments?.length || 0) + ((task as any).rebuttals?.length || 0)}
                             </span>
                           </div>
                           {task.basecamp_url && (

@@ -187,7 +187,7 @@ router.get("/", clerkAuth, async (req: Request, res: Response) => {
       )
       const openIssuesCount =
         project.tasks?.filter((t: any) =>
-          ["open", "in_progress"].includes(t.status),
+          ["open", "in_progress"].includes(t.status) && !t.title?.includes("[Feedback]")
         ).length || 0
 
       const { qa_runs, tasks, project_settings, ...rest } = project
@@ -382,12 +382,12 @@ router.get("/:id", clerkAuth, async (req: Request, res: Response) => {
 
     const openIssuesCount = new Set(
       (tasks || [])
-        .filter((t: any) => ["open", "in_progress"].includes(t.status))
+        .filter((t: any) => ["open", "in_progress"].includes(t.status) && !t.title?.includes("[Feedback]"))
         .map((t: any) => t.finding_id || t.title),
     ).size
 
     const resolvedIssuesCount =
-      tasks?.filter((t: any) => ["resolved", "closed"].includes(t.status))
+      tasks?.filter((t: any) => ["resolved", "closed"].includes(t.status) && !t.title?.includes("[Feedback]"))
         .length || 0
 
     const settings = (Array.isArray(project_settings)
