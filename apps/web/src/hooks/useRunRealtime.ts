@@ -23,8 +23,15 @@ export const useRunRealtime = (runId: string) => {
         },
         (payload) => {
           console.log("Run update received via Realtime:", payload)
-          // Instead of manually updating with partial data (which lacks Joined fields like 'pages'),
-          // we invalidate to trigger a clean fetch from the API.
+          // Instantly update the UI cache to show live progress!
+          queryClient.setQueryData<QARun>(["run", runId], (oldData) => {
+            if (!oldData) return oldData
+            return {
+              ...oldData,
+              ...payload.new,
+            }
+          })
+          // Also fetch in background to make sure we didn't miss relations
           queryClient.invalidateQueries({ queryKey: ["run", runId] })
           queryClient.invalidateQueries({ queryKey: ["findings"] })
           queryClient.invalidateQueries({ queryKey: ["run-findings", runId] })

@@ -143,15 +143,16 @@ router.get(
         .select(
           `
         *,
+        recording_updated_at,
         users!qa_runs_created_by_fkey (
           full_name,
           email
         )
       `,
+
           { count: "exact" },
         )
         .eq("project_id", project_id)
-        .eq("is_pinned", false)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1)
 
@@ -203,6 +204,7 @@ router.get(
         .select(
           `
         *,
+        recording_updated_at,
         users!qa_runs_created_by_fkey (
           full_name,
           email
@@ -806,7 +808,7 @@ router.delete(
     }
 
     try {
-      // 1. Gather all file paths from Findings & Pages before deleting the run
+      // 1. Gather explicitly linked file paths from Findings & Pages
       const { data: findings } = await supabase
         .from("findings")
         .select("screenshot_url")
@@ -837,12 +839,58 @@ router.delete(
         extractPath(p.screenshot_url_mobile)
       })
 
-      // 2. Delete the files from both potential buckets (old and new)
+      // 2. Delete explicitly linked files from potential buckets
       if (pathsToDelete.size > 0) {
         const pathArray = Array.from(pathsToDelete)
         await supabase.storage.from("screenshots").remove(pathArray)
         await supabase.storage.from("evidence").remove(pathArray)
         await supabase.storage.from("public_evidence").remove(pathArray)
+      }
+
+      // 2.5 Recursively delete all orphaned intermediate run files by runId prefix
+      const deleteFolderRecursive = async (
+        bucketName: string,
+        folderPath: string,
+      ) => {
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .list(folderPath, { limit: 1000 })
+        if (error || !data || data.length === 0) return
+
+        const filesToRemove: string[] = []
+        for (const item of data) {
+          if (!item.name || item.name === ".emptyFolderPlaceholder") continue
+          const itemPath = `${folderPath}/${item.name}`
+          if (!item.id) {
+            await deleteFolderRecursive(bucketName, itemPath)
+          } else {
+            filesToRemove.push(itemPath)
+          }
+        }
+        if (filesToRemove.length > 0) {
+          await supabase.storage.from(bucketName).remove(filesToRemove)
+        }
+      }
+
+      for (const runId of runIds) {
+        // Wipe entirely runId-prefixed folders
+        await deleteFolderRecursive("screenshots", runId)
+        await deleteFolderRecursive("evidence", runId)
+        await deleteFolderRecursive("public_evidence", runId)
+
+        // Wipe privacy policy intermediate files prefixed with runId
+        const { data: ppData } = await supabase.storage
+          .from("evidence")
+          .list("privacy_policy", { limit: 1000, search: runId })
+        if (ppData && ppData.length > 0) {
+          const ppFilesToRemove = ppData
+            .filter((item) => item.id && item.name.startsWith(runId))
+            .map((item) => `privacy_policy/${item.name}`)
+
+          if (ppFilesToRemove.length > 0) {
+            await supabase.storage.from("evidence").remove(ppFilesToRemove)
+          }
+        }
       }
 
       // 3. Delete the run

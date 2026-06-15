@@ -203,3 +203,20 @@ dockefile.recordings
 # Test DB files
 test-db.ts
 apps/api/test-db.ts
+
+
+# Debug/test scripts (created during development sessions)
+test_*.cjs
+test_*.js
+check*.cjs
+check*.js
+get_schema.js
+apps/api/check_*.js
+apps/api/test_*.cjs
+apps/worker/check*.cjs
+apps/worker/check*.js
+apps/worker/get_schema.js
+apps/worker/test_*.cjs
+apps/worker/src/check_*.ts
+apps/web/check*.cjs
+apps/web/check*.js

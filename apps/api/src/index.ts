@@ -27,6 +27,7 @@ import { basecampIntegrationRouter } from "./routes/basecampIntegration"
 import { onboardingRouter } from "./routes/onboarding"
 import { proxyRouter } from "./routes/proxy"
 import { storageRouter } from "./routes/storage"
+import { recordingsRouter } from "./routes/recordings"
 import { clerkMiddleware, getAuth } from "@clerk/express"
 import { createBullBoard } from "@bull-board/api"
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter"
@@ -111,6 +112,7 @@ app.use("/api/chat", chatRouter)
 app.use("/api/tasks", basecampIntegrationRouter)
 app.use("/api/basecamp", basecampIntegrationRouter)
 app.use("/api/storage", storageRouter)
+app.use("/api/recordings", recordingsRouter)
 app.use("/debug", debugRouter)
 
 // 404 handler

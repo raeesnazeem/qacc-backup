@@ -246,12 +246,12 @@ export const useNotResolvedTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: { comment: string; assignees: string[] } }) => 
+    mutationFn: ({ taskId, data, isFeedbackTask }: { taskId: string; data: { comment: string; assignees: string[] }; isFeedbackTask?: boolean }) => 
       notResolvedTask(axios, taskId, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', variables.taskId] });
-      toast.success('Task re-opened and synced with Basecamp');
+      toast.success(variables.isFeedbackTask ? 'Task marked as not resolved' : 'Task re-opened and synced with Basecamp');
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Failed to update task');

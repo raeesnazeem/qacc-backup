@@ -43,6 +43,7 @@ export const NotResolvedModal = ({
     notResolved(
       {
         taskId: task.id,
+        isFeedbackTask,
         data: {
           comment,
           assignees: assigneeIds,

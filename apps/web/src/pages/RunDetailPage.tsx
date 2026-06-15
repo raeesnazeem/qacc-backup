@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useLocation } from "react-router-dom"
 import { useProject } from "../hooks/useProjects"
 import { QAFinding, QAPage } from "../api/runs.api"
 import { useAuthAxios } from "../lib/useAuthAxios"
@@ -12,6 +12,7 @@ import {
   useRunFindings,
   useUpdateRunStatus,
   useUpdateFinding,
+  useRuns,
 } from "../hooks/useRuns"
 import { useCreateTask, useTasks } from "../hooks/useTasks"
 import { AssignMemberModal } from "../components/AssignMemberModal"
@@ -58,6 +59,7 @@ import toast from "react-hot-toast"
 
 export const RunDetailPage = () => {
   const { id: projectId, runId } = useParams<{ id: string; runId: string }>()
+  const location = useLocation()
   const axios = useAuthAxios()
   const updateStatus = useUpdateRunStatus()
   const { canDo } = useRole()
@@ -86,6 +88,7 @@ export const RunDetailPage = () => {
   } = useRunProgress(runId!)
 
   const { data: project, isLoading: isLoadingProject } = useProject(projectId!)
+  const { data: projectRunsData } = useRuns(projectId!)
 
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
   const selectedPage = useMemo(
@@ -101,12 +104,62 @@ export const RunDetailPage = () => {
     | "visual_diff"
     | "woocommerce"
     | "report"
+    | "recordings"
   >("overview")
-
+  const [recordingsSubTab, setRecordingsSubTab] = useState<"full" | "history">(
+    "full",
+  )
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false)
   const [prefillFinding, setPrefillFinding] = useState<QAFinding | null>(null)
 
+  // Reset view to overview or specific tab when navigating
+  useEffect(() => {
+    if (location.hash === "#recordings") {
+      setActiveTab("recordings")
+      setRecordingsSubTab("full")
+    } else {
+      setActiveTab("overview")
+      setRecordingsSubTab("full")
+    }
+    window.scrollTo(0, 0)
+  }, [runId, location.hash])
+
   const [isCapturingScreenshots, setIsCapturingScreenshots] = useState(false)
+  const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0)
+
+  // Session-persisted timer for video recording
+  useEffect(() => {
+    let interval: any
+    const runIdStr = run?.id
+    const status = (run as any)?.recording_status
+
+    if (status === "recording" && runIdStr) {
+      const storedStart = sessionStorage.getItem(`rec_start_${runIdStr}`)
+      if (!storedStart) {
+        sessionStorage.setItem(`rec_start_${runIdStr}`, Date.now().toString())
+      }
+
+      interval = setInterval(() => {
+        const start = parseInt(
+          sessionStorage.getItem(`rec_start_${runIdStr}`) ||
+            Date.now().toString(),
+        )
+        setRecordingElapsedSeconds(Math.floor((Date.now() - start) / 1000))
+      }, 1000)
+    } else if (runIdStr) {
+      sessionStorage.removeItem(`rec_start_${runIdStr}`)
+      setRecordingElapsedSeconds(0)
+    }
+
+    return () => clearInterval(interval)
+  }, [(run as any)?.recording_status, run?.id])
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  }
+
   const [isRecordingVideo, setIsRecordingVideo] = useState(false)
 
   const {
@@ -812,12 +865,14 @@ export const RunDetailPage = () => {
   }
 
   const handleCaptureVideo = async () => {
-    if (!selectedPage?.url) return
     setIsRecordingVideo(true)
+    const toastId = toast.loading("Triggering full project video recording...")
     try {
-      toast.success("Video recording started...")
+      await axios.post("/api/recordings/start", { runId })
+      toast.success("Full project video recording started!", { id: toastId })
     } catch (err) {
-      toast.error("Failed to start video recording")
+      console.error(err)
+      toast.error("Failed to start video recording", { id: toastId })
     } finally {
       setIsRecordingVideo(false)
     }
@@ -1123,6 +1178,32 @@ export const RunDetailPage = () => {
               </div>
             )}
 
+            {/* <a
+              href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/admin/queues`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-unified flex items-center gap-2"
+              title="View BullMQ Dashboard"
+            >
+              <LayoutDashboard size={14} />
+              <span>Queue Dashboard</span>
+            </a> */}
+
+            {run.status === "completed" && (
+              <button
+                onClick={handleCaptureVideo}
+                disabled={isRecordingVideo}
+                className="btn-unified flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white mr-4"
+                title="Record Full Project Video"
+              >
+                {isRecordingVideo ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Video size={14} />
+                )}
+              </button>
+            )}
+
             <a
               href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/admin/queues`}
               target="_blank"
@@ -1286,6 +1367,22 @@ export const RunDetailPage = () => {
           <ClipboardList size={14} />
           Report
         </button>
+        {(isRecordingVideo ||
+          (run as any)?.recording_status === "recording" ||
+          (run as any)?.recording_status === "completed" ||
+          (run as any)?.recording_video_urls) && (
+          <button
+            onClick={() => setActiveTab("recordings")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+              activeTab === "recordings"
+                ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+            }`}
+          >
+            <Video size={14} />
+            Recordings
+          </button>
+        )}
       </div>
 
       {activeTab === "overview" && (
@@ -1792,7 +1889,7 @@ export const RunDetailPage = () => {
                         )}
                       </button>
 
-                      <button
+                      {/* <button
                         onClick={handleCaptureVideo}
                         disabled={isRecordingVideo || isCapturingScreenshots}
                         className="flex items-center justify-center gap-2 btn-unified btn-small"
@@ -1805,7 +1902,7 @@ export const RunDetailPage = () => {
                         ) : (
                           <Video size={18} className="text-[#fff]-500" />
                         )}
-                      </button>
+                      </button> */}
                     </>
                   )}
                 </div>
@@ -2161,6 +2258,320 @@ export const RunDetailPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "recordings" && (
+        <div className="space-y-8 animate-in fade-in duration-200">
+          <div className="min-h-[100vh] pt-4">
+            <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-700 pb-4 mb-6">
+              <button
+                onClick={() => setRecordingsSubTab("full")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap border ${
+                  recordingsSubTab === "full"
+                    ? "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-200 shadow-sm border-slate-300 dark:border-slate-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                }`}
+              >
+                <Video size={14} />
+                Full Project Recordings
+              </button>
+              <button
+                onClick={() => setRecordingsSubTab("history")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap border ${
+                  recordingsSubTab === "history"
+                    ? "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-200 shadow-sm border-slate-300 dark:border-slate-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                }`}
+              >
+                <Activity size={14} />
+                Record Run History
+              </button>
+            </div>
+
+            {recordingsSubTab === "full" && (
+              <>
+                {(run as any)?.recording_status === "recording" && (
+                  <div className="space-y-4 mb-8 bg-accent/5 dark:bg-transparent p-4 rounded-lg border border-accent/40 dark:border-indigo-800/30">
+                    <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                      <span>Recording in Progress...</span>
+                      <span className="bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded text-[10px] flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        {formatTime(recordingElapsedSeconds)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      {["desktop", "laptop", "tablet", "mobile"].map(
+                        (viewport) => {
+                          const progress =
+                            (run as any)?.recording_progress?.[viewport] || 0
+                          return (
+                            <div key={viewport} className="space-y-2">
+                              <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-widest text-indigo-500/80 dark:text-indigo-400/80">
+                                <span>{viewport}</span>
+                                {progress === -1 ? (
+                                  <span className="text-red-500 flex items-center gap-1.5">
+                                    Incomplete
+                                    <button
+                                      onClick={() =>
+                                        toast.error(
+                                          `The ${viewport} recording worker encountered a fatal error or timed out. Please check your GCP logs for exact details.`,
+                                        )
+                                      }
+                                      className="text-[9px] underline text-red-400 hover:text-red-300 cursor-pointer"
+                                    >
+                                      See why
+                                    </button>
+                                  </span>
+                                ) : progress === 0 ? (
+                                  <span className="text-indigo-400/60 animate-pulse lowercase text-[9px] tracking-normal font-medium">
+                                    Waking up cloud worker...
+                                  </span>
+                                ) : (
+                                  <span>{Math.round(progress)}%</span>
+                                )}
+                              </div>
+                              <div
+                                className={`h-1.5 w-full rounded-full overflow-hidden ${
+                                  progress === -1
+                                    ? "bg-red-100 dark:bg-red-950/30"
+                                    : "bg-indigo-200/60 dark:bg-indigo-950"
+                                }`}
+                              >
+                                {progress === -1 ? (
+                                  <div className="h-full bg-red-500 w-full opacity-50" />
+                                ) : progress === 0 ? (
+                                  <div className="h-full bg-indigo-400/30 w-full animate-pulse" />
+                                ) : (
+                                  <div
+                                    className="h-full bg-indigo-500 transition-all duration-1000 ease-out relative"
+                                    style={{
+                                      width: `${Math.round(progress)}%`,
+                                    }}
+                                  >
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        },
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {Object.keys((run as any)?.recording_video_urls || {}).length >
+                  0 && (
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={() => {
+                        const urls = (run as any)?.recording_video_urls || {}
+                        const entries = Object.entries(urls)
+                        if (entries.length > 0) {
+                          toast.success("Starting downloads...", {
+                            id: "download-videos",
+                          })
+                          entries.forEach(([viewport, url], index) => {
+                            if (typeof url === "string") {
+                              setTimeout(() => {
+                                const apiUrl =
+                                  import.meta.env.VITE_API_URL ||
+                                  "http://localhost:3001"
+                                const downloadUrl = `${apiUrl}/api/recordings/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(`recording_${viewport}.webm`)}`
+                                const iframe = document.createElement("iframe")
+                                iframe.style.display = "none"
+                                iframe.src = downloadUrl
+                                document.body.appendChild(iframe)
+                                setTimeout(
+                                  () => document.body.removeChild(iframe),
+                                  30000,
+                                )
+                              }, index * 1500)
+                            }
+                          })
+                        }
+                      }}
+                      className="btn-unified bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 flex items-center gap-2 px-5 py-2 text-sm font-bold shadow-sm rounded-md transition-all"
+                    >
+                      <Download size={16} />
+                      Download All
+                    </button>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {["desktop", "laptop", "tablet", "mobile"].map((viewport) => {
+                    // Get the video URL directly from the run object
+                    const videoUrl = (run as any)?.recording_video_urls?.[
+                      viewport
+                    ]
+
+                    return (
+                      <div
+                        key={viewport}
+                        className="p-6 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 flex flex-col gap-4 items-center justify-center text-center shadow-sm"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                          <Video size={24} />
+                        </div>
+                        <h4 className="text-lg font-bold capitalize text-slate-800 dark:text-slate-200">
+                          {viewport} View
+                        </h4>
+                        {videoUrl ? (
+                          <div className="inline-flex items-center gap-2 mt-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-100 dark:border-emerald-800/30 text-[11px] font-bold uppercase tracking-wider shadow-sm">
+                            <CheckCircle2 size={14} />
+                            Recording Successful
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-500 mt-2 italic">
+                            Recording not available
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {recordingsSubTab === "history" && (
+              <div className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden shadow-sm mt-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/50 dark:bg-[#1d2a31] border-b border-slate-100 dark:border-slate-700">
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                          Run Date
+                        </th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                          Total Time Taken
+                        </th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                          Successful
+                        </th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                          Run By
+                        </th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">
+                          Results
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                      {projectRunsData?.data &&
+                      projectRunsData.data.length > 0 ? (
+                        [...projectRunsData.data]
+                          .sort((a, b) => {
+                            const aDate = new Date(
+                              (a as any).recording_updated_at || a.created_at,
+                            ).getTime()
+                            const bDate = new Date(
+                              (b as any).recording_updated_at || b.created_at,
+                            ).getTime()
+                            return bDate - aDate
+                          })
+                          .map((historyRun) => {
+                            const duration =
+                              historyRun.started_at && historyRun.completed_at
+                                ? Math.floor(
+                                    (new Date(
+                                      historyRun.completed_at,
+                                    ).getTime() -
+                                      new Date(
+                                        historyRun.started_at,
+                                      ).getTime()) /
+                                      1000,
+                                  )
+                                : 0
+                            return (
+                              <tr
+                                key={historyRun.id}
+                                className="hover:bg-slate-50 dark:hover:bg-[#1d2a31] group transition-colors"
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-slate-200 tracking-tight">
+                                  {new Date(
+                                    (historyRun as any).recording_updated_at ||
+                                      historyRun.created_at,
+                                  ).toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                                  {duration > 0 ? formatTime(duration) : "N/A"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                      !(historyRun as any).recording_updated_at
+                                        ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                                        : historyRun.status === "completed"
+                                          ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800"
+                                          : historyRun.status === "failed"
+                                            ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800"
+                                            : "bg-slate-100 dark:bg-[#131d22] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                                    }`}
+                                  >
+                                    {!(historyRun as any).recording_updated_at
+                                      ? "Incomplete"
+                                      : historyRun.status === "completed"
+                                        ? "Completed"
+                                        : historyRun.status === "failed"
+                                          ? "Failed"
+                                          : historyRun.status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 capitalize whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                                  <div className="flex items-center gap-1.5">
+                                    <User
+                                      size={12}
+                                      className="text-slate-400"
+                                    />
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                      {historyRun.created_by_name || "System"}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end space-x-3">
+                                    {!(historyRun as any)
+                                      .recording_updated_at ? (
+                                      <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1">
+                                        No Results
+                                      </span>
+                                    ) : (
+                                      <>
+                                        <Link
+                                          to={`/projects/${projectId}/runs/${historyRun.id}#recordings`}
+                                          className="text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-500 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 transition-colors"
+                                        >
+                                          Check Results
+                                        </Link>
+                                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })
+                      ) : (
+                        <tr className="border-b dark:border-slate-700">
+                          <td className="px-6 py-12 text-center" colSpan={5}>
+                            <div className="flex flex-col items-center">
+                              <div className="p-3 bg-slate-100 dark:bg-[#131d22] rounded-full mb-3">
+                                <Activity className="w-6 h-6 text-slate-400" />
+                              </div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-slate-200">
+                                No history data available.
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

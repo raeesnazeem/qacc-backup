@@ -1,143 +1,185 @@
-import { chromium } from 'playwright';
-import { supabase } from './lib/supabase';
-import fs from 'fs';
-import path from 'path';
-import 'dotenv/config';
+import { chromium } from "playwright"
+import { supabase } from "./lib/supabase"
+import fs from "fs"
+import path from "path"
+import "dotenv/config"
+import { Storage } from "@google-cloud/storage"
 
 async function autoScroll(page: any) {
   await page.evaluate(async () => {
     await new Promise<void>((resolve) => {
-      let totalHeight = 0;
-      const distance = 100;
+      let totalHeight = 0
+      const distance = 100
       const timer = setInterval(() => {
-        const scrollHeight = document.body.scrollHeight;
-        window.scrollBy(0, distance);
-        totalHeight += distance;
+        const scrollHeight = document.body.scrollHeight
+        window.scrollBy(0, distance)
+        totalHeight += distance
 
         if (totalHeight >= scrollHeight) {
-          clearInterval(timer);
-          resolve();
+          clearInterval(timer)
+          resolve()
         }
-      }, 100);
-    });
-  });
+      }, 100)
+    })
+  })
 }
 
 async function run() {
-  const targetUrl = process.env.TARGET_URL;
-  const viewportType = process.env.VIEWPORT_TYPE || 'desktop';
-  const runId = process.env.RUN_ID;
-  const pageId = process.env.PAGE_ID;
+  const viewportType = process.env.VIEWPORT_TYPE || "desktop"
+  const runId = process.env.RUN_ID
 
-  if (!targetUrl || !runId || !pageId) {
-    console.error('Missing required environment variables: TARGET_URL, RUN_ID, PAGE_ID');
-    process.exit(1);
+  if (!runId) {
+    console.error("Missing required environment variables: RUN_ID")
+    process.exit(1)
   }
 
-  console.log(`Starting recording for ${targetUrl} [${viewportType}]`);
+  console.log(
+    `Starting full project recording for RUN: ${runId} [${viewportType}]`,
+  )
 
   const viewports: Record<string, { width: number; height: number }> = {
     desktop: { width: 1920, height: 1080 },
     laptop: { width: 1366, height: 768 },
     tablet: { width: 768, height: 1024 },
     mobile: { width: 375, height: 667 },
-  };
-
-  const viewport = viewports[viewportType] || viewports.desktop;
-  const videoDir = '/tmp/videos';
-
-  if (!fs.existsSync(videoDir)) {
-    fs.mkdirSync(videoDir, { recursive: true });
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const viewport = viewports[viewportType] || viewports.desktop
+  const videoDir = "/tmp/videos"
+
+  if (!fs.existsSync(videoDir)) {
+    fs.mkdirSync(videoDir, { recursive: true })
+  }
+
+  const browser = await chromium.launch({ headless: true })
   const context = await browser.newContext({
     viewport,
     recordVideo: {
       dir: videoDir,
       size: viewport,
     },
-  });
+  })
 
-  const page = await context.newPage();
+  const page = await context.newPage()
 
   try {
-    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
-    
-    // Perform auto-scroll to trigger lazy loading and animations
-    await autoScroll(page);
-    
-    // Wait a bit at the bottom
-    await page.waitForTimeout(2000);
+    // 1. Fetch all scanned pages/URLs for this runId directly
+    const { data: pages, error: fetchError } = await supabase
+      .from("pages")
+      .select("url")
+      .eq("run_id", runId)
 
-    // Close context to flush video
-    await context.close();
-    await browser.close();
+    if (fetchError) throw fetchError
 
-    // Find the video file
-    const videoFile = await page.video()?.path();
+    // Filter out duplicate URLs and non-webpages (like .kml, .xml, .pdf) so we don't record them
+    const uniqueUrls = [
+      ...new Set(pages?.map((p) => p.url).filter(Boolean)),
+    ].filter((url: any) => {
+      try {
+        const pathname = new URL(url).pathname.toLowerCase()
+        return !pathname.match(
+          /\.(kml|xml|pdf|jpg|jpeg|png|gif|svg|zip|csv|mp4|webm|doc|docx|xls|xlsx|txt)$/i,
+        )
+      } catch {
+        return false
+      }
+    })
+
+    // 2. Loop through all URLs and record in the SAME browser context (One long video!)
+    let urlIndex = 0
+    for (const url of uniqueUrls) {
+      console.log(`Navigating to ${url}...`)
+
+      try {
+        await page.goto(url as string, {
+          waitUntil: "networkidle",
+          timeout: 60000,
+        })
+
+        // Perform auto-scroll to trigger lazy loading
+        await autoScroll(page)
+
+        // Wait a bit at the bottom before jumping to the next page
+        await page.waitForTimeout(2000)
+      } catch (navError) {
+        console.error(`Skipping ${url} due to error:`, navError)
+        // We continue to the next URL instead of crashing the whole run
+      }
+
+      // --- NEW: Calculate and update progress in the database ---
+      urlIndex++
+      const progressPercentage = Math.round(
+        (urlIndex / uniqueUrls.length) * 100,
+      )
+
+      // Update our specific viewport's percentage securely via RPC
+      const { error: progressError } = await supabase
+        .rpc("merge_qa_run_recording_progress", {
+          p_run_id: runId,
+          p_viewport: viewportType,
+          p_progress: progressPercentage,
+        })
+      if (progressError) console.error("Progress RPC Error:", progressError)
+    }
+    // 3. Close context to finalize and flush the ONE long video
+    await context.close()
+    await browser.close()
+
+    // 4. Find the video file locally in /tmp
+    const videoFile = await page.video()?.path()
     if (!videoFile) {
-      throw new Error('Video file not found');
+      throw new Error("Video file not found")
     }
 
-    const fileName = `${runId}/${pageId}_${viewportType}.webm`;
-    const fileBuffer = fs.readFileSync(videoFile);
+    const fileName = `${runId}/full_project_${viewportType}.webm`
 
-    console.log(`Uploading video to Supabase: ${fileName}`);
-    const { error: uploadError } = await supabase.storage
-      .from('recordings')
-      .upload(fileName, fileBuffer, {
-        contentType: 'video/webm',
-        upsert: true,
-      });
+    // 5. Upload video to Google Cloud Storage (GCS)
+    console.log(`Uploading full project video to GCS: ${fileName}`)
+    const storage = new Storage()
+    const bucketName = process.env.GCS_BUCKET_NAME || "my-agency-qa-videos" // Set this ENV in Cloud Run UI!
+    const bucket = storage.bucket(bucketName)
 
-    if (uploadError) {
-      throw uploadError;
-    }
+    await bucket.upload(videoFile, {
+      destination: fileName,
+      contentType: "video/webm",
+    })
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('recordings')
-      .getPublicUrl(fileName);
+    // Make it publicly accessible
+    await bucket.file(fileName).makePublic()
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`
+    console.log(`Video uploaded successfully to GCS: ${publicUrl}`)
 
-    console.log(`Video uploaded successfully: ${publicUrl}`);
+    // 6. Update the RUN directly with the new video URL securely via RPC
+    const { error: urlError } = await supabase
+      .rpc("merge_qa_run_recording_url", {
+        p_run_id: runId,
+        p_viewport: viewportType,
+        p_url: publicUrl,
+      })
+    if (urlError) console.error("URL RPC Error:", urlError)
 
-    // Update findings table
-    // We fetch current video_urls to avoid overwriting other viewports
-    const { data: finding, error: fetchError } = await supabase
-      .from('findings')
-      .select('video_urls')
-      .match({ run_id: runId, page_id: pageId })
-      .single();
-
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows found"
-      throw fetchError;
-    }
-
-    const currentVideoUrls = finding?.video_urls || {};
-    const updatedVideoUrls = {
-      ...currentVideoUrls,
-      [viewportType]: publicUrl,
-    };
-
-    const { error: updateError } = await supabase
-      .from('findings')
-      .update({ video_urls: updatedVideoUrls })
-      .match({ run_id: runId, page_id: pageId });
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    console.log('Database updated successfully');
-    
-    // Clean up local video file
-    fs.unlinkSync(videoFile);
-
+    // Clean up local video file from memory
+    fs.unlinkSync(videoFile)
   } catch (error) {
-    console.error('Error during recording process:', error);
-    await browser.close();
-    process.exit(1);
+    console.error("Error during recording process:", error)
+    const { data: runData } = await supabase
+      .from("qa_runs")
+      .select("recording_progress")
+      .eq("id", runId)
+      .single()
+    await supabase
+      .from("qa_runs")
+      .update({
+        recording_status: "error",
+        recording_progress: {
+          ...(runData?.recording_progress || {}),
+          [viewportType]: -1,
+        },
+      })
+      .eq("id", runId)
+    await browser.close()
+    process.exit(0)
   }
 }
 
-run();
+run()

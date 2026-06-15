@@ -13,8 +13,8 @@ import { processRunAiChecksJob } from "./jobs/runAiChecksJob"
 import { processCrawlBatchJob } from "./jobs/crawlBatchJob"
 import { processCheckProjectPlanJob } from "./jobs/checkProjectPlanJob"
 import { processCheckPaidMediaJob } from "./jobs/checkPaidMediaJob"
-import { processCaptureMultiviewScreenshotsJob } from "./jobs/captureMultiviewScreenshotsJob"
 import { qaQueue, connection } from "./lib/queue"
+import { processCaptureMultiviewScreenshotsJob } from "./jobs/captureMultiviewScreenshotsJob"
 
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
@@ -128,7 +128,8 @@ logger.info(`Worker started, consuming queue: ${queueName}`)
 import http from "http"
 
 // Dummy HTTP server for Dokploy/PaaS health checks
-const port = process.env.PORT || (process.env.NODE_ENV === "production" ? 8080 : 0)
+const port =
+  process.env.PORT || (process.env.NODE_ENV === "production" ? 8080 : 0)
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" })
   res.end("Worker is healthy\n")

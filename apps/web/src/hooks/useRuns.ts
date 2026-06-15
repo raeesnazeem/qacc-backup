@@ -56,8 +56,10 @@ export const useRun = (runId: string) => {
     enabled: !!runId,
     refetchInterval: (query) => {
       const data = query.state.data as QARun | undefined
-      return data?.status === "running" || data?.status === "pending"
-        ? 10000
+      return data?.status === "running" ||
+        data?.status === "pending" ||
+        (data as any)?.recording_status === "recording"
+        ? 3000
         : false
     },
   })
@@ -287,4 +289,3 @@ export const useTogglePinRun = (projectId: string) => {
     },
   })
 }
-

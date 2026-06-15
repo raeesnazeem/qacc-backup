@@ -75,6 +75,7 @@ export interface QAFinding {
   ai_generated: boolean
   created_at: string
   updated_at: string
+  video_urls?: Record<string, string>
   pages?: {
     url: string
   }

@@ -4,7 +4,7 @@ import { URL } from 'url';
 
 const IGNORED_EXTENSIONS = [
   '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico',
-  '.css', '.js', '.json', '.xml', '.txt', '.zip', '.rar', '.exe',
+  '.css', '.js', '.json', '.xml', '.kml', '.kmz', '.txt', '.zip', '.rar', '.exe',
   '.mp3', '.mp4', '.wav', '.avi', '.mov', '.doc', '.docx', '.xls', '.xlsx'
 ];
 

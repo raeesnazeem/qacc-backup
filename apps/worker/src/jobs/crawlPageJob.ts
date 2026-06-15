@@ -3,7 +3,6 @@ import { checkLearnMoreButtons } from "../checks/learnMoreButtonsCheck"
 import { chromium } from "playwright"
 import { supabase } from "../lib/supabase"
 import { qaQueue } from "../lib/queue"
-import { screenshotPage } from "../crawlers/pageScreenshotter"
 import { checkBrokenLinks } from "../checks/brokenLinksCheck"
 import { checkExternalLinks } from "../checks/externalLinkCheck"
 import { checkMeta } from "../checks/metaCheck"
@@ -165,51 +164,26 @@ export async function processCrawlPageJob(job: Job) {
     // )
     const needsScreenshots = false
 
-    // Step 2: Call screenshotPage(pageUrl, runId, pageId)
     let screenshots: any = {}
-    if (needsScreenshots) {
-      screenshots = await screenshotPage(pageUrl, runId, pageId, updateProgress)
 
-      // Step 3: Update page record with screenshot URLs and status='screenshotted'
-      const { error: updatePageError } = await supabase
-        .from("pages")
-        .update({
-          screenshot_url_desktop: screenshots.desktopUrl,
-          screenshot_url_tablet: screenshots.tabletUrl,
-          screenshot_url_mobile: screenshots.mobileUrl,
-          status: "screenshotted",
-        })
-        .eq("id", pageId)
+    // We dont capture 3 viewports for the page.
+    logger.info({ pageId }, "Skipping 3-viewport screenshot capture")
 
-      if (updatePageError) {
-        logger.error(
-          { pageId, error: updatePageError.message },
-          "Failed to update page record with screenshots",
-        )
-      }
-    } else {
-      // If we don't need screenshots, update status directly to 'screenshotted' with nulls!
-      logger.info(
-        { pageId },
-        "Skipping screenshot capture: Not needed for active checks",
+    const { error: updatePageError } = await supabase
+      .from("pages")
+      .update({
+        screenshot_url_desktop: null,
+        screenshot_url_tablet: null,
+        screenshot_url_mobile: null,
+        status: "screenshotted",
+      })
+      .eq("id", pageId)
+
+    if (updatePageError) {
+      logger.error(
+        { pageId, error: updatePageError.message },
+        "Failed to update page status",
       )
-
-      const { error: updatePageError } = await supabase
-        .from("pages")
-        .update({
-          screenshot_url_desktop: null,
-          screenshot_url_tablet: null,
-          screenshot_url_mobile: null,
-          status: "screenshotted",
-        })
-        .eq("id", pageId)
-
-      if (updatePageError) {
-        logger.error(
-          { pageId, error: updatePageError.message },
-          "Failed to update page status directly",
-        )
-      }
     }
 
     // Step 3.5: Responsive Visual Check (Check Factor 12)
@@ -756,7 +730,9 @@ export async function processCrawlPageJob(job: Job) {
       if (browser) {
         await browser
           .close()
-          .catch((e: any) => logger.error({ err: e }, "Failed to close browser"))
+          .catch((e: any) =>
+            logger.error({ err: e }, "Failed to close browser"),
+          )
       }
     }
   } catch (error: any) {
