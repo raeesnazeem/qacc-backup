@@ -2301,63 +2301,61 @@ export const RunDetailPage = () => {
                         {formatTime(recordingElapsedSeconds)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      {["desktop", "laptop", "tablet", "mobile"].map(
-                        (viewport) => {
-                          const progress =
-                            (run as any)?.recording_progress?.[viewport] || 0
-                          return (
-                            <div key={viewport} className="space-y-2">
-                              <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-widest text-indigo-500/80 dark:text-indigo-400/80">
-                                <span>{viewport}</span>
-                                {progress === -1 ? (
-                                  <span className="text-red-500 flex items-center gap-1.5">
-                                    Incomplete
-                                    <button
-                                      onClick={() =>
-                                        toast.error(
-                                          `The ${viewport} recording worker encountered a fatal error or timed out. Please check your GCP logs for exact details.`,
-                                        )
-                                      }
-                                      className="text-[9px] underline text-red-400 hover:text-red-300 cursor-pointer"
-                                    >
-                                      See why
-                                    </button>
-                                  </span>
-                                ) : progress === 0 ? (
-                                  <span className="text-indigo-400/60 animate-pulse lowercase text-[9px] tracking-normal font-medium">
-                                    Waking up cloud worker...
-                                  </span>
-                                ) : (
-                                  <span>{Math.round(progress)}%</span>
-                                )}
-                              </div>
-                              <div
-                                className={`h-1.5 w-full rounded-full overflow-hidden ${
-                                  progress === -1
-                                    ? "bg-red-100 dark:bg-red-950/30"
-                                    : "bg-indigo-200/60 dark:bg-indigo-950"
-                                }`}
-                              >
-                                {progress === -1 ? (
-                                  <div className="h-full bg-red-500 w-full opacity-50" />
-                                ) : progress === 0 ? (
-                                  <div className="h-full bg-indigo-400/30 w-full animate-pulse" />
-                                ) : (
-                                  <div
-                                    className="h-full bg-indigo-500 transition-all duration-1000 ease-out relative"
-                                    style={{
-                                      width: `${Math.round(progress)}%`,
-                                    }}
+                    <div className="grid grid-cols-3 gap-4">
+                      {["desktop", "tablet", "mobile"].map((viewport) => {
+                        const progress =
+                          (run as any)?.recording_progress?.[viewport] || 0
+                        return (
+                          <div key={viewport} className="space-y-2">
+                            <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-widest text-indigo-500/80 dark:text-indigo-400/80">
+                              <span>{viewport}</span>
+                              {progress === -1 ? (
+                                <span className="text-red-500 flex items-center gap-1.5">
+                                  Incomplete
+                                  <button
+                                    onClick={() =>
+                                      toast.error(
+                                        `The ${viewport} recording worker encountered a fatal error or timed out. Please check your GCP logs for exact details.`,
+                                      )
+                                    }
+                                    className="text-[9px] underline text-red-400 hover:text-red-300 cursor-pointer"
                                   >
-                                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                                  </div>
-                                )}
-                              </div>
+                                    See why
+                                  </button>
+                                </span>
+                              ) : progress === 0 ? (
+                                <span className="text-indigo-400/60 animate-pulse lowercase text-[9px] tracking-normal font-medium">
+                                  Waking up cloud worker...
+                                </span>
+                              ) : (
+                                <span>{Math.round(progress)}%</span>
+                              )}
                             </div>
-                          )
-                        },
-                      )}
+                            <div
+                              className={`h-1.5 w-full rounded-full overflow-hidden ${
+                                progress === -1
+                                  ? "bg-red-100 dark:bg-red-950/30"
+                                  : "bg-indigo-200/60 dark:bg-indigo-950"
+                              }`}
+                            >
+                              {progress === -1 ? (
+                                <div className="h-full bg-red-500 w-full opacity-50" />
+                              ) : progress === 0 ? (
+                                <div className="h-full bg-indigo-400/30 w-full animate-pulse" />
+                              ) : (
+                                <div
+                                  className="h-full bg-indigo-500 transition-all duration-1000 ease-out relative"
+                                  style={{
+                                    width: `${Math.round(progress)}%`,
+                                  }}
+                                >
+                                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -2400,8 +2398,8 @@ export const RunDetailPage = () => {
                     </button>
                   </div>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {["desktop", "laptop", "tablet", "mobile"].map((viewport) => {
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {["desktop", "tablet", "mobile"].map((viewport) => {
                     // Get the video URL directly from the run object
                     const videoUrl = (run as any)?.recording_video_urls?.[
                       viewport
