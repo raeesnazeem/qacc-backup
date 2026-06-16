@@ -504,8 +504,8 @@ export const RunsTab = ({ project }: RunsTabProps) => {
                     <td className="px-6 py-4">
                       <span className="text-sm font-bold text-slate-900 dark:text-slate-200 tracking-tight">
                         #
-                        {runsData.pagination.total -
-                          (page - 1) * runsData.pagination.limit -
+                        {runsData!.pagination.total -
+                          (page - 1) * runsData!.pagination.limit -
                           index}
                       </span>
                     </td>
