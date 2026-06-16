@@ -104,26 +104,22 @@ export const RunsTab = ({ project }: RunsTabProps) => {
   const [unpinRunModalId, setUnpinRunModalId] = useState<string | null>(null)
   const [pinCustomName, setPinCustomName] = useState("")
   const [isDeletingLimit, setIsDeletingLimit] = useState(false)
+  const [runToReplaceId, setRunToReplaceId] = useState<string | null>(null)
+  const [pendingPinRunId, setPendingPinRunId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Detect if we have more than 3 total runs, and we have enough data loaded to slice
-    if (
-      runsData &&
-      runsData.pagination.total > 3 &&
-      runsData.data &&
-      runsData.data.length > 3 &&
-      !isDeletingLimit
-    ) {
-      setIsDeletingLimit(true)
-      setShowLimitModal(true)
+  useEffect(() => {
+    if (!runsData || !runsData.data || isDeletingLimit) return
 
-      // Get all runs except the 3 most recent, filtering out pinned runs
-      const runsToDelete = runsData.data
-        .slice(3)
-        .filter((run) => !run.is_pinned)
-        .map((run) => run.id)
+    const unpinnedRuns = runsData.data.filter((run) => !run.is_pinned)
+
+    if (unpinnedRuns.length > 3) {
+      const runsToDelete = unpinnedRuns.slice(3).map((run) => run.id)
 
       if (runsToDelete.length > 0) {
+        setIsDeletingLimit(true)
+        setShowLimitModal(true)
+
         deleteRuns.mutate(runsToDelete, {
           onSettled: () => {
             // Keep modal visible slightly longer so the user can read it
@@ -183,6 +179,8 @@ export const RunsTab = ({ project }: RunsTabProps) => {
       pinnedRunsData.data &&
       pinnedRunsData.data.length >= 3
     ) {
+      setPendingPinRunId(runId)
+      setPinCustomName("")
       setShowPinLimitModal(true)
       return
     }
@@ -209,6 +207,35 @@ export const RunsTab = ({ project }: RunsTabProps) => {
           setPinCustomName("")
         },
       },
+    )
+  }
+
+  const handleConfirmReplacePin = () => {
+    if (!pendingPinRunId || !runToReplaceId) return
+    if (!pinCustomName.trim()) {
+      alert("Please enter a custom name for the new pinned run.")
+      return
+    }
+
+    // First unpin the old one
+    togglePinRun.mutate(
+      { runId: runToReplaceId, is_pinned: false },
+      {
+        onSuccess: () => {
+          // Then pin the new one
+          togglePinRun.mutate(
+            { runId: pendingPinRunId, is_pinned: true, custom_name: pinCustomName },
+            {
+              onSuccess: () => {
+                setShowPinLimitModal(false)
+                setPendingPinRunId(null)
+                setRunToReplaceId(null)
+                setPinCustomName("")
+              }
+            }
+          )
+        }
+      }
     )
   }
 
@@ -704,22 +731,60 @@ export const RunsTab = ({ project }: RunsTabProps) => {
       {showPinLimitModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-slate-50 dark:bg-[#1D2A31] rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-amber-100 dark:bg-amber-900/50 rounded-full mb-4">
-              <AlertCircle className="w-6 h-6 text-amber-600" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-200 text-center mb-2">
-              Pin Limit Exceeded
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-200 mb-4">
+              Pin Limit Reached
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 text-center mb-6">
-              You can only have up to 3 pinned runs. Please unpin an existing
-              run before pinning a new one.
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+              You can only have up to 3 pinned runs. Please select an existing pinned run to replace, and enter a name for the new one.
             </p>
-            <div className="flex justify-center">
+            
+            <input
+              type="text"
+              autoFocus
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131d22] rounded-md text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent mb-4"
+              placeholder="Custom name for new pinned run"
+              value={pinCustomName}
+              onChange={(e) => setPinCustomName(e.target.value)}
+            />
+
+            <div className="space-y-2 mb-6">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select run to replace:</p>
+              {pinnedRunsData?.data?.map((run) => (
+                <div 
+                  key={run.id}
+                  onClick={() => setRunToReplaceId(run.id)}
+                  className={`p-3 rounded-md border cursor-pointer transition-colors ${
+                    runToReplaceId === run.id 
+                      ? "bg-pink-50 border-pink-500 dark:bg-pink-900/30 dark:border-pink-500" 
+                      : "bg-white border-slate-200 dark:bg-[#131d22] dark:border-slate-700 hover:border-pink-300/50 dark:hover:border-pink-700/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{run.custom_name}</span>
+                    <span className="text-xs text-slate-500">#{run.id.slice(0, 8)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowPinLimitModal(false)}
-                className="px-4 py-2 text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-md transition-colors"
+                onClick={() => {
+                  setShowPinLimitModal(false)
+                  setPendingPinRunId(null)
+                  setRunToReplaceId(null)
+                  setPinCustomName("")
+                }}
+                className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
               >
-                Understood
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmReplacePin}
+                disabled={!runToReplaceId || !pinCustomName.trim() || togglePinRun.isPending}
+                className="px-4 py-2 text-sm font-bold text-white bg-accent hover:bg-accent/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {togglePinRun.isPending ? "Replacing..." : "Replace & Pin"}
               </button>
             </div>
           </div>
