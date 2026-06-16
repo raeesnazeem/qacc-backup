@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import { useUser, SignOutButton } from "@clerk/react"
 import { useRole } from "../hooks/useRole"
 import { useAuthAxios } from "../lib/useAuthAxios"
-import { Save, Loader2, Edit2 } from "lucide-react"
+import { Save, Loader2, Edit2, RefreshCw } from "lucide-react"
 import toast from "react-hot-toast"
 
 export const SettingsPage = () => {
@@ -14,6 +14,10 @@ export const SettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [basecampId, setBasecampId] = useState("")
   const [isSavingBasecamp, setIsSavingBasecamp] = useState(false)
+  const [basecampTokenExpiresAt, setBasecampTokenExpiresAt] = useState<
+    string | null
+  >(null)
+  const [countdown, setCountdown] = useState<string>("")
   const [isSavingGoogle, setIsSavingGoogle] = useState(false)
 
   useEffect(() => {
@@ -22,7 +26,7 @@ export const SettingsPage = () => {
 
       try {
         const { data } = await axios.get("/api/users/notification-prefs")
-        
+
         let fetchedGoogleId = data?.google_chat_user_id || ""
 
         if (!fetchedGoogleId) {
@@ -48,6 +52,9 @@ export const SettingsPage = () => {
 
         if (data && data.basecamp_person_id !== undefined) {
           setBasecampId(data.basecamp_person_id || "")
+          if (data.basecamp_token_expires_at) {
+            setBasecampTokenExpiresAt(data.basecamp_token_expires_at)
+          }
         }
       } catch (error) {
         console.error("Failed to fetch profile settings:", error)
@@ -58,6 +65,37 @@ export const SettingsPage = () => {
       fetchProfile()
     }
   }, [axios, user])
+
+  useEffect(() => {
+    if (!basecampTokenExpiresAt) return
+
+    const updateCountdown = () => {
+      const expiry = new Date(basecampTokenExpiresAt).getTime()
+      const now = new Date().getTime()
+      const distance = expiry - now
+
+      if (distance < 0) {
+        setCountdown("Token Expired")
+        return
+      }
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24))
+      const hours = Math.floor(
+        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      )
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+
+      if (days > 0) {
+        setCountdown(`Expires in ${days}d ${hours}h`)
+      } else {
+        setCountdown(`Expires in ${hours}h ${minutes}m`)
+      }
+    }
+
+    updateCountdown()
+    const interval = setInterval(updateCountdown, 60000) // Update every minute
+    return () => clearInterval(interval)
+  }, [basecampTokenExpiresAt])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -167,6 +205,11 @@ export const SettingsPage = () => {
           label: "Basecamp Integration",
           value: "",
           type: "oauth",
+        },
+        {
+          label: "Basecamp Personal Token",
+          value: basecampTokenExpiresAt,
+          type: "basecamp_token_ui",
         },
         {
           label: "Google Integration",
@@ -338,10 +381,13 @@ export const SettingsPage = () => {
                                   "Failed to connect to Google",
                               )
                               setTimeout(() => {
-                                toast("If facing issues, sign out & sign back in. Retry within 5 mins of login.", {
-                                  duration: 5000,
-                                  icon: "💡",
-                                })
+                                toast(
+                                  "If facing issues, sign out & sign back in. Retry within 5 mins of login.",
+                                  {
+                                    duration: 5000,
+                                    icon: "💡",
+                                  },
+                                )
                               }, 500)
                             }
                           }}
@@ -380,6 +426,40 @@ export const SettingsPage = () => {
                         Connect Personal Basecamp
                       </button>
                     )}
+                    {item.type === "basecamp_token_ui" && (
+                      <div className="flex flex-col items-end gap-2">
+                        {item.value ? (
+                          <div
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-bold shadow-sm ${countdown === "Token Expired" ? "bg-red-50 text-red-600 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}
+                          >
+                            <div
+                              className={`w-2 h-2 rounded-full animate-pulse ${countdown === "Token Expired" ? "bg-red-500" : "bg-emerald-500"}`}
+                            ></div>
+                            {countdown}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-500 italic">
+                            No personal token generated yet
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() =>
+                            (window.location.href = `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/basecamp/user-auth`)
+                          }
+                          className="bg-[#F5D88D] text-black hover:bg-[#E5C87D] border border-[#D4A643] font-bold text-xs py-1.5 px-4 rounded shadow-sm transition-all flex items-center gap-2"
+                        >
+                          {item.value ? (
+                            <>
+                              <RefreshCw size={14} />
+                              Regenerate Token
+                            </>
+                          ) : (
+                            "Generate Token"
+                          )}
+                        </button>
+                      </div>
+                    )}
 
                     {item.type === "toggle" && (
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -403,7 +483,8 @@ export const SettingsPage = () => {
                     {item.type !== "input" &&
                       (role === "admin" || role === "super_admin"
                         ? item.label !== "Google Integration" &&
-                          item.label !== "Basecamp Integration"
+                          item.label !== "Basecamp Integration" &&
+                          item.label !== "Basecamp Personal Token"
                         : item.label === "Full Name" ||
                           item.label === "Role") && (
                         <button className="h-6 w-6 p-0 flex items-center justify-center dark:bg-transparent border-none shadow-none`">
