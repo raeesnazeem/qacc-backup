@@ -18,7 +18,9 @@ import {
   ClipboardList,
   Globe,
   MonitorSmartphone,
+  Unlink,
 } from "lucide-react"
+import { useBulkDeleteTasks } from "../hooks/useTasks"
 import { useRole } from "../hooks/useRole"
 import { useParams, Link } from "react-router-dom"
 import { FindingSeverityEditor } from "./FindingSeverityEditor"
@@ -82,6 +84,8 @@ export const DefaultFindingCard: React.FC<FindingCardProps> = ({
   const { id: projectId } = useParams<{ id: string }>()
   const { canDo } = useRole()
   const canAction = canDo("qa_engineer")
+  const { mutate: bulkDeleteTasks, isPending: isDeleting } =
+    useBulkDeleteTasks()
 
   const [localTitle, setLocalTitle] = React.useState(finding.title)
   const [isContextModalOpen, setIsContextModalOpen] = React.useState(false)
@@ -318,7 +322,18 @@ export const DefaultFindingCard: React.FC<FindingCardProps> = ({
             className={`p-1 rounded transition-all ${isSelected ? "text-black scale-110" : "text-slate-300 hover:text-slate-400"}`}
           >
             {isSelected ? (
-              <div className="flex items-center h-5 mr-3"><input type="checkbox" name="enabled_checks" className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent" value="accessibility" autoComplete="new-password" data-form-type="other" checked readOnly /></div>
+              <div className="flex items-center h-5 mr-3">
+                <input
+                  type="checkbox"
+                  name="enabled_checks"
+                  className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
+                  value="accessibility"
+                  autoComplete="new-password"
+                  data-form-type="other"
+                  checked
+                  readOnly
+                />
+              </div>
             ) : (
               <Square size={20} strokeWidth={2} />
             )}
@@ -337,7 +352,6 @@ export const DefaultFindingCard: React.FC<FindingCardProps> = ({
             {finding.check_factor.replace(/_/g, " ")}
           </div>
         </div>
-
       </div>
 
       <div className="relative group/input">
@@ -439,14 +453,28 @@ export const DefaultFindingCard: React.FC<FindingCardProps> = ({
                   assignedTaskIds &&
                   assignedTaskIds.length > 0 &&
                   assignedTaskIds[0] !== finding.id && (
-                    <Link
-                      to={`/projects/${projectId}?tab=tasks&taskId=${assignedTaskIds[0]}`}
-                      target="_blank"
-                      className="p-2 text-slate-400 hover:text-accent transition-colors"
-                      title="View Task"
-                    >
-                      <Eye size={16} />
-                    </Link>
+                    <div className="ml-1 flex items-center gap-1">
+                      <Link
+                        to={`/projects/${projectId}?tab=tasks&taskId=${assignedTaskIds[0]}`}
+                        target="_blank"
+                        className="text-slate-400 hover:text-accent transition-colors"
+                        title="View Task"
+                      >
+                        <Eye size={14} />
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          bulkDeleteTasks(assignedTaskIds)
+                        }}
+                        disabled={isDeleting}
+                        className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Unlink Task"
+                      >
+                        <Unlink size={14} />
+                      </button>
+                    </div>
                   )}
               </div>
             </>

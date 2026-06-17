@@ -14,7 +14,9 @@ import {
   Check,
   Sparkle,
   Eye,
+  Unlink2,
 } from "lucide-react"
+import { useBulkDeleteTasks } from "../hooks/useTasks"
 import { useRole } from "../hooks/useRole"
 import { useParams, Link } from "react-router-dom"
 import { FindingSeverityEditor } from "./FindingSeverityEditor"
@@ -53,6 +55,9 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
   const setAiResult = useAiResultsStore((state) => state.setAiResult)
 
   const canAction = canDo("qa_engineer")
+  const { mutate: bulkDeleteTasks, isPending: isDeleting } =
+    useBulkDeleteTasks()
+
   const { galleryImages: allGalleryImages, addImage } = useGalleryStore()
   const galleryImages = allGalleryImages[finding.id] || []
 
@@ -254,7 +259,9 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
                     onCreateTask?.({
                       ...finding,
                       title: localTitle,
-                      description: finding.description,
+                      description:
+                        (finding.description || "") +
+                        (aiResultData ? getAiResultsText(aiResultData) : ""),
 
                       gallery_images: galleryImages,
                     })
@@ -269,20 +276,63 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
                   assignedTaskIds &&
                   assignedTaskIds.length > 0 &&
                   assignedTaskIds[0] !== finding.id && (
-                    <Link
-                      to={`/projects/${projectId}?tab=tasks&taskId=${assignedTaskIds[0]}`}
-                      target="_blank"
-                      className="p-2 text-slate-400 hover:text-accent transition-colors"
-                      title="View Task"
-                    >
-                      <Eye size={16} />
-                    </Link>
+                    <div className="ml-1 flex items-center gap-1">
+                      <Link
+                        to={`/projects/${projectId}?tab=tasks&taskId=${assignedTaskIds[0]}`}
+                        target="_blank"
+                        className="text-slate-400 hover:text-accent transition-colors"
+                        title="View Task"
+                      >
+                        <Eye size={14} />
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          bulkDeleteTasks(assignedTaskIds)
+                        }}
+                        disabled={isDeleting}
+                        className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Unlink Task"
+                      >
+                        <Unlink2 size={16} />
+                      </button>
+                    </div>
                   )}
               </>
             )}
           </div>
 
           <div className="flex items-center gap-3">
+            {assignedUsers && assignedUsers.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  Assigned
+                </span>
+                <div className="flex -space-x-1.5 overflow-hidden">
+                  {assignedUsers.map((u, idx) => (
+                    <div
+                      key={u.id || idx}
+                      className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#1d2a31] border-2 border-white dark:border-[#1D2A31] flex items-center justify-center text-[8px] font-bold text-slate-500 dark:text-slate-300 relative group/avatar"
+                    >
+                      {u.avatar_url ? (
+                        <img
+                          src={u.avatar_url}
+                          alt={u.full_name || ""}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        u.full_name?.[0] || ""
+                      )}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                        {u.full_name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {!aiResultData && (
               <button
                 onClick={handleRunAiCheck}

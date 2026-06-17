@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Globe,
   MonitorSmartphone,
+  Unlink2,
 } from "lucide-react"
 import { useRole } from "../hooks/useRole"
 import { useProject } from "../hooks/useProjects"
@@ -28,6 +29,7 @@ import { QAFinding } from "../api/runs.api"
 import { BrowserOverlay } from "./BrowserOverlay"
 import { useGalleryStore } from "../store/galleryStore"
 import { useAuthAxios } from "../lib/useAuthAxios"
+import { useBulkDeleteTasks } from "../hooks/useTasks"
 
 interface FindingCardProps {
   finding: QAFinding
@@ -83,6 +85,9 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
   const { data: project } = useProject(projectId || "")
   const { canDo } = useRole()
   const canAction = canDo("qa_engineer")
+  const { mutate: bulkDeleteTasks, isPending: isDeleting } =
+    useBulkDeleteTasks()
+
   const [localTitle, setLocalTitle] = React.useState(finding.title)
   const [isBrowserOpen, setIsBrowserOpen] = React.useState(false)
   const { galleryImages: allGalleryImages, addImage } = useGalleryStore()
@@ -158,7 +163,10 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
   if (!canAction) return null
 
   const screenshotUrls = finding.screenshot_url
-    ? finding.screenshot_url.split(",").map((url) => url.trim()).filter(Boolean)
+    ? finding.screenshot_url
+        .split(",")
+        .map((url) => url.trim())
+        .filter(Boolean)
     : []
 
   const allVerified = isDesktopVerified && isTabletVerified && isMobileVerified
@@ -196,10 +204,21 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
             className={`p-1 rounded transition-all ${isSelected ? "text-black scale-110" : "text-slate-300 hover:text-slate-400"}`}
           >
             {isSelected ? (
-                <div className="flex items-center h-5 mr-3"><input type="checkbox" name="enabled_checks" className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent" value="accessibility" autoComplete="new-password" data-form-type="other" checked readOnly /></div>
-              ) : (
-                <Square size={20} strokeWidth={2} />
-              )}
+              <div className="flex items-center h-5 mr-3">
+                <input
+                  type="checkbox"
+                  name="enabled_checks"
+                  className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
+                  value="accessibility"
+                  autoComplete="new-password"
+                  data-form-type="other"
+                  checked
+                  readOnly
+                />
+              </div>
+            ) : (
+              <Square size={20} strokeWidth={2} />
+            )}
           </button>
           <FindingSeverityEditor
             findingId={finding.id}
@@ -215,7 +234,6 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
             {finding.check_factor.replace(/_/g, " ")}
           </div>
         </div>
-
       </div>
 
       {/* Heading Input */}
@@ -254,11 +272,7 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
                       />
                     </div>
                     <p className="font-bold text-slate-400 uppercase tracking-widest text-center text-[8px]">
-                      {idx === 0
-                        ? "Desktop"
-                        : idx === 1
-                          ? "Tablet"
-                          : "Mobile"}
+                      {idx === 0 ? "Desktop" : idx === 1 ? "Tablet" : "Mobile"}
                     </p>
                   </div>
                 ))}
@@ -337,12 +351,30 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
               ) : isPushed ? (
                 <>
                   <span className="text-slate">Success </span>
-                  <svg width="18" height="18" viewBox="0 0 35 30" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="pl-1"><path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path></svg>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 35 30"
+                    fill="currentColor"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="pl-1"
+                  >
+                    <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                  </svg>
                 </>
               ) : (
                 <>
                   <span className="text-white">Push to </span>
-                  <svg width="18" height="18" viewBox="0 0 35 30" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="pl-1"><path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path></svg>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 35 30"
+                    fill="currentColor"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="pl-1"
+                  >
+                    <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                  </svg>
                 </>
               )}
             </button>
@@ -357,7 +389,10 @@ export const LogoCheckFindingCard: React.FC<FindingCardProps> = ({
                     finding.tasks?.flatMap((t) =>
                       (t as any).users ? [(t as any).users] : [],
                     ) || []
-                  const allAssigneesList = [...currentAssignees, ...assignedUsers]
+                  const allAssigneesList = [
+                    ...currentAssignees,
+                    ...assignedUsers,
+                  ]
                   const assigneeNames = Array.from(
                     new Set(
                       allAssigneesList
@@ -413,14 +448,28 @@ Mobile: ${isMobileVerified ? "Yes" : "No"}
             assignedTaskIds &&
             assignedTaskIds.length > 0 &&
             assignedTaskIds[0] !== finding.id && (
-              <Link
-                to={`/projects/${projectId}?tab=tasks&taskId=${assignedTaskIds[0]}`}
-                target="_blank"
-                className="p-2 text-slate-400 hover:text-accent transition-colors"
-                title="View Task"
-              >
-                <Eye size={16} />
-              </Link>
+              <div className="ml-1 flex items-center gap-1">
+                <Link
+                  to={`/projects/${projectId}?tab=tasks&taskId=${assignedTaskIds[0]}`}
+                  target="_blank"
+                  className="text-slate-400 hover:text-accent transition-colors"
+                  title="View Task"
+                >
+                  <Eye size={14} />
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    bulkDeleteTasks(assignedTaskIds)
+                  }}
+                  disabled={isDeleting}
+                  className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
+                  title="Unlink Task"
+                >
+                  <Unlink2 size={14} />
+                </button>
+              </div>
             )}
         </div>
       </div>
