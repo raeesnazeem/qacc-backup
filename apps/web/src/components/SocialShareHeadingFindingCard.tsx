@@ -73,8 +73,8 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
     isConfirmed || isAssigned
       ? "border-emerald-500 ring-1 ring-emerald-500/20"
       : isFalsePositive
-        ? "opacity-60 border-slate-200 dark:border-slate-700"
-        : "border-slate-200 dark:border-slate-700 hover:border-accent/40"
+        ? "opacity-60 border-slate-200 dark:border-slate-800"
+        : "border-slate-200 dark:border-slate-800 hover:border-accent/40"
 
   const screenshotUrls = finding.screenshot_url
     ? finding.screenshot_url
@@ -87,6 +87,18 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
     <div
       className={`group p-6 bg-slate-200/10 dark:bg-[#1D2A31] rounded-md border transition-all duration-300 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.05)] hover:shadow-md relative overflow-hidden flex flex-col gap-6 ${cardBorder}`}
     >
+      <div
+        className="hidden dark:block absolute inset-0 rounded-md pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
+        style={{
+          WebkitMask:
+            "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {canAction && (
@@ -204,14 +216,6 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
               </button>
             ) : (
               <>
-                {!(hasTask || isAssigned) && (
-                  <button
-                    onClick={() => onFalsePositive?.(finding.id)}
-                    className="btn-unified"
-                  >
-                    False Positive
-                  </button>
-                )}
                 {isManuallyVerified && (
                   <button
                     onClick={handlePushToBasecamp}

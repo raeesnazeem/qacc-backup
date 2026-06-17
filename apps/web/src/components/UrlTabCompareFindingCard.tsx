@@ -12,6 +12,7 @@ import {
   CheckSquare,
   ClipboardList,
   Sparkles,
+  Sparkle,
 } from "lucide-react"
 import { useRole } from "../hooks/useRole"
 import { useParams, Link } from "react-router-dom"
@@ -153,13 +154,25 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
     isConfirmed || isAssigned
       ? "border-emerald-500 ring-1 ring-emerald-500/20"
       : isFalsePositive
-        ? "opacity-60 border-slate-200 dark:border-slate-700"
-        : "border-slate-200 dark:border-slate-700 hover:border-accent/40"
+        ? "opacity-60 border-slate-200 dark:border-slate-800"
+        : "border-slate-200 dark:border-slate-800 hover:border-accent/40"
 
   return (
     <div
       className={`group p-6 bg-slate-200/10 dark:bg-[#1D2A31] rounded-md border transition-all duration-300 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.05)] hover:shadow-md relative overflow-hidden flex flex-col gap-6 ${cardBorder}`}
     >
+      <div
+        className="hidden dark:block absolute inset-0 rounded-md pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
+        style={{
+          WebkitMask:
+            "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
+      </div>
       {/* Top Row: Checkbox + Severity + Check Factor + Date */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -190,21 +203,7 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
             URL & Tab Compare
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
-            {new Date(finding.created_at).toLocaleDateString(undefined, {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
-            {new Date(finding.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
+
       </div>
 
       {/* Title Input */}
@@ -261,7 +260,7 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
         )}
       </div>
 
-      {/* Show URLs and AI Button Area */}
+      {/* Show URLs Area */}
       <div className="flex items-center gap-3 py-2">
         {/* The Original Show URLs Button */}
         <button
@@ -271,27 +270,6 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
           <Globe size={12} />
           Show URLs
         </button>
-
-        {/* The New AI Star Button (Shows only if AI hasn't run yet) */}
-        {!aiResultData && (
-          <button
-            onClick={handleRunAiCheck}
-            title="Run Smart AI Comparison"
-            className="p-1.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:scale-105 active:scale-95 border border-purple-200 dark:border-purple-800/30 transition-all flex items-center justify-center shadow-sm"
-          >
-            <Sparkles size={14} />
-          </button>
-        )}
-
-        {/* The New AI Results Link (Shows only AFTER AI finishes) */}
-        {aiResultData && (
-          <button
-            onClick={() => setIsAiModalOpen(true)}
-            className="text-[10px] font-bold text-sky-400 hover:text-sky-500 underline tracking-wider capitalize"
-          >
-            AI Results
-          </button>
-        )}
       </div>
 
       {/* Action Footer */}
@@ -347,34 +325,75 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
             )}
           </div>
 
-          {assignedUsers.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                Assigned
-              </span>
-              <div className="flex -space-x-1.5 overflow-hidden">
-                {assignedUsers.map((u, idx) => (
-                  <div
-                    key={u.id || idx}
-                    className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#1d2a31] border-2 border-white dark:border-[#1D2A31] flex items-center justify-center text-[8px] font-bold text-slate-500 dark:text-slate-300 relative group/avatar"
-                  >
-                    {u.avatar_url ? (
-                      <img
-                        src={u.avatar_url}
-                        alt={u.full_name || ""}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      u.full_name?.[0] || ""
-                    )}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                      {u.full_name}
+          <div className="flex items-center gap-3">
+            {assignedUsers.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  Assigned
+                </span>
+                <div className="flex -space-x-1.5 overflow-hidden">
+                  {assignedUsers.map((u, idx) => (
+                    <div
+                      key={u.id || idx}
+                      className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#1d2a31] border-2 border-white dark:border-[#1D2A31] flex items-center justify-center text-[8px] font-bold text-slate-500 dark:text-slate-300 relative group/avatar"
+                    >
+                      {u.avatar_url ? (
+                        <img
+                          src={u.avatar_url}
+                          alt={u.full_name || ""}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        u.full_name?.[0] || ""
+                      )}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                        {u.full_name}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {!aiResultData && (
+              <button
+                onClick={handleRunAiCheck}
+                title="Run AI Check on Plugins Screenshot"
+                className="p-1.5 rounded-md bg-transparent text-white hover:text-blue-500 transition-all flex items-center justify-center shadow-sm"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-sparkles"
+                >
+                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+                  <path d="M5 3v4"></path>
+                  <path d="M19 17v4"></path>
+                  <path d="M3 5h4"></path>
+                  <path d="M17 19h4"></path>
+                </svg>
+              </button>
+            )}
+
+            {aiResultData && (
+              <button
+                onClick={() => setIsAiModalOpen(true)}
+                className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
+              >
+                <span className="flex items-center gap-1">
+                  <Sparkle size={14} />
+                  <span>AI RESULTS</span>
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -385,7 +385,7 @@ export const TasksPage = () => {
   const { role, profile, isLoading: isRoleLoading } = useRole()
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<any>(null)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const taskIdParam = searchParams.get("taskId")
   const axios = useAuthAxios()
 
@@ -850,7 +850,13 @@ export const TasksPage = () => {
       <TaskDetailPanel
         task={selectedTask}
         isOpen={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+        onClose={() => {
+          setSelectedTask(null)
+          if (searchParams.has("taskId")) {
+            searchParams.delete("taskId")
+            setSearchParams(searchParams)
+          }
+        }}
       />
     </div>
   )

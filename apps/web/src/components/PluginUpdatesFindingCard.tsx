@@ -99,13 +99,25 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
     isConfirmed || isAssigned
       ? "border-emerald-500 ring-1 ring-emerald-500/20"
       : isFalsePositive
-        ? "opacity-60 border-slate-200 dark:border-slate-700"
-        : "border-slate-200 dark:border-slate-700 hover:border-accent/40"
+        ? "opacity-60 border-slate-200 dark:border-slate-800"
+        : "border-slate-200 dark:border-slate-800 hover:border-accent/40"
 
   return (
     <div
       className={`group p-6 bg-slate-200/10 dark:bg-[#1D2A31] rounded-md border transition-all duration-300 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.05)] hover:shadow-md relative overflow-hidden flex flex-col gap-6 ${cardBorder}`}
     >
+      <div
+        className="hidden dark:block absolute inset-0 rounded-md pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
+        style={{
+          WebkitMask:
+            "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-accent/30 to-white/30 group-hover:opacity-50 transition-opacity duration-700" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300%] aspect-square bg-[conic-gradient(from_0deg,transparent_0_45deg,theme(colors.accent)_135deg,transparent_180deg_225deg,#a3d4c7_315deg,transparent_360deg)] opacity-0 group-hover:opacity-100 group-hover:animate-[spin_4s_linear_infinite]" />
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -175,30 +187,6 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
             Verify Updates
           </span>
         </label>
-
-        {/* The AI Check Button */}
-        {!aiResultData && (
-          <button
-            onClick={handleRunAiCheck}
-            title="Run AI Check on Plugins Screenshot"
-            className="p-1.5 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 transition-all flex items-center justify-center shadow-sm"
-          >
-            <Sparkles size={14} />
-          </button>
-        )}
-
-        {/* AI Results Link */}
-        {aiResultData && (
-          <button
-            onClick={() => setIsAiModalOpen(true)}
-            className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
-          >
-            <span className="flex items-center gap-1">
-              <Sparkle size={14} />
-              <span>AI RESULTS</span>
-            </span>
-          </button>
-        )}
       </div>
 
       {/* Thumbnail / Screenshot Lightbox */}
@@ -247,6 +235,24 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
                   {hasTask || isAssigned ? "Task Linked" : "Add to Tasks"}
                 </button>
               </>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {!aiResultData && (
+              <button onClick={handleRunAiCheck} title="Run AI Check on Plugins Screenshot" className="p-1.5 rounded-md bg-transparent text-white hover:text-blue-500 transition-all flex items-center justify-center shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg></button>
+            )}
+
+            {aiResultData && (
+              <button
+                onClick={() => setIsAiModalOpen(true)}
+                className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
+              >
+                <span className="flex items-center gap-1">
+                  <Sparkle size={14} />
+                  <span>AI RESULTS</span>
+                </span>
+              </button>
             )}
           </div>
         </div>

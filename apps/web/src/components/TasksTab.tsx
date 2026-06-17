@@ -51,7 +51,7 @@ export const TasksTab = ({ project }: TasksTabProps) => {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const taskIdParam = searchParams.get("taskId")
 
   useEffect(() => {
@@ -496,7 +496,13 @@ export const TasksTab = ({ project }: TasksTabProps) => {
       <TaskDetailPanel
         task={selectedTask}
         isOpen={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+        onClose={() => {
+          setSelectedTask(null)
+          if (searchParams.has("taskId")) {
+            searchParams.delete("taskId")
+            setSearchParams(searchParams)
+          }
+        }}
       />
 
       <NotResolvedModal

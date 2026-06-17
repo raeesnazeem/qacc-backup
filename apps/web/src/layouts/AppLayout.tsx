@@ -20,6 +20,8 @@ import {
   MessageSquare,
   X,
   Shield,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import { useRole } from "../hooks/useRole"
 import { useEffect, useState } from "react"
@@ -160,9 +162,9 @@ export const AppLayout = () => {
           className="absolute -right-3 top-6 bg-[#e2e8f0] dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full p-1 z-20 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
         >
           {isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-slate-500" />
+            <PanelLeftOpen className="w-4 h-4 text-slate-500" />
           ) : (
-            <ChevronLeft className="w-4 h-4 text-slate-500" />
+            <PanelLeftClose className="w-4 h-4 text-slate-500" />
           )}
         </button>
         <div
