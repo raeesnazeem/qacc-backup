@@ -31,8 +31,6 @@ interface ContactFormFindingCardProps {
   isAssigned?: boolean
 }
 
-const { mutate: deleteTask, isPending: isDeleting } = useDeleteTask()
-
 export const ContactFormFindingCard: React.FC<ContactFormFindingCardProps> = ({
   finding,
   onConfirm,
@@ -47,6 +45,8 @@ export const ContactFormFindingCard: React.FC<ContactFormFindingCardProps> = ({
 }) => {
   const { canDo } = useRole()
   const canAction = canDo("qa_engineer")
+  const { mutate: bulkDeleteTasks, isPending: isDeleting } =
+    useBulkDeleteTasks()
   const { id: projectId } = useParams<{ id: string }>()
 
   const [localTitle, setLocalTitle] = useState(finding.title)

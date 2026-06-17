@@ -6,7 +6,7 @@ import {
   MonitorSmartphone,
   ClipboardList,
   Eye,
-  Unlink,
+  Unlink2,
 } from "lucide-react"
 import { useBulkDeleteTasks } from "../hooks/useTasks"
 import { useRole } from "../hooks/useRole"
@@ -37,8 +37,6 @@ interface FindingCardProps {
   isAssigned?: boolean
 }
 
-const { mutate: deleteTask, isPending: isDeleting } = useDeleteTask()
-
 export const CallnowFindingCard: React.FC<FindingCardProps> = ({
   finding,
   onConfirm,
@@ -54,6 +52,8 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
   const { data: project } = useProject(projectId || "")
   const { canDo } = useRole()
   const canAction = canDo("qa_engineer")
+  const { mutate: bulkDeleteTasks, isPending: isDeleting } =
+    useBulkDeleteTasks()
 
   const [localTitle, setLocalTitle] = React.useState(finding.title)
   const [isBrowserOpen, setIsBrowserOpen] = React.useState(false)
@@ -405,7 +405,7 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
                 title="Unlink Task"
               >
-                <Unlink size={14} />
+                <Unlink2 size={16} />
               </button>
             </div>
           )}
