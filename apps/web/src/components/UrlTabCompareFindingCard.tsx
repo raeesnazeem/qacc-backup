@@ -588,7 +588,7 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
             {/* Modal Header */}
             <div className="p-4 border-b dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-[#1D2A31] shrink-0">
               <h3 className="font-bold text-slate-900 dark:text-slate-200 text-sm uppercase tracking-widest flex items-center gap-2">
-                <Sparkles size={16} className="text-purple-500" />
+                <Sparkles size={16} className="text-sky-400" />
                 AI Smart Comparison
               </h3>
               <button
@@ -604,10 +604,7 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
               {/* If the API is still fetching data, show a loading message */}
               {isAiLoading && (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                  <Sparkles
-                    size={32}
-                    className="text-purple-500 animate-pulse"
-                  />
+                  <Sparkles size={32} className="text-sky-400 animate-pulse" />
                   <p className="text-sm text-slate-500 font-medium tracking-wide">
                     AI is analyzing the URLs contextually. Please wait...
                   </p>

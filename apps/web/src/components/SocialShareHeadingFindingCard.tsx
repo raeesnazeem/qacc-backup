@@ -9,6 +9,7 @@ import {
   Sparkles,
   Sparkle,
   Unlink2,
+  RefreshCw,
 } from "lucide-react"
 import { useParams, Link } from "react-router-dom"
 import { useRole } from "../hooks/useRole"
@@ -55,16 +56,42 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
   const galleryImages = allGalleryImages[finding.id] || []
 
   const [localTitle, setLocalTitle] = React.useState(finding.title)
-  const [isManuallyVerified, setIsManuallyVerified] = React.useState(false)
+  const initialIsPushed =
+    finding.status === "confirmed" &&
+    (!!(finding as any).basecamp_comment_url ||
+      !!(finding as any).basecamp_comment_id)
+  const [isManuallyVerified, setIsManuallyVerified] =
+    React.useState(initialIsPushed)
 
   // AI states
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false)
   const [isAiLoading, setIsAiLoading] = React.useState(false)
-  const [aiResultData, setAiResultData] = React.useState<any>(null)
+  const [aiResultData, setAiResultData] = React.useState<any>(() => {
+    try {
+      const cached = sessionStorage.getItem(`aiResult_${finding.id}`)
+      if (cached) return JSON.parse(cached)
+      if (finding.context_text) {
+        const parsed = JSON.parse(finding.context_text)
+        return parsed.aiResultData || null
+      }
+    } catch (e) {}
+    return null
+  })
 
   const api = useAuthAxios()
   const [isPushing, setIsPushing] = React.useState(false)
-  const [isPushed, setIsPushed] = React.useState(finding.status === "confirmed")
+  const [isPushed, setIsPushed] = React.useState(initialIsPushed)
+
+  const [isDeletingPush, setIsDeletingPush] = React.useState(false)
+  const [deleteModalAction, setDeleteModalAction] = React.useState<
+    "unverify" | null
+  >(null)
+
+  const [commentUrl, setCommentUrl] = React.useState<string | null>(
+    finding.status === "confirmed"
+      ? (finding as any).basecamp_comment_url || null
+      : null,
+  )
 
   const getAiResultsText = (data: any) => {
     if (!data || data.status === "error") return ""
@@ -99,10 +126,13 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
   const handlePushToBasecamp = async () => {
     setIsPushing(true)
     try {
-      await api.post(`/api/findings/${finding.id}/push-basecamp`, {
-        aiResultsText: getAiResultsText(aiResultData),
-      })
-
+      const response = await api.post(
+        `/api/findings/${finding.id}/push-basecamp`,
+        {
+          aiResultsText: getAiResultsText(aiResultData),
+        },
+      )
+      if (response.data.commentUrl) setCommentUrl(response.data.commentUrl)
       setIsPushed(true)
       if (onConfirm) onConfirm(finding.id)
     } catch (err: any) {
@@ -111,6 +141,39 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
       setIsPushing(false)
     }
   }
+
+  const handleDeletePush = async (clearAiResults: boolean = false) => {
+    setIsDeletingPush(true)
+    try {
+      await api.delete(`/api/findings/${finding.id}/delete-basecamp-push`)
+      setIsPushed(false)
+
+      const patchData: any = {
+        basecamp_comment_id: null,
+        basecamp_comment_url: null,
+      }
+
+      if (clearAiResults) {
+        setAiResultData(null)
+        sessionStorage.removeItem(`aiResult_${finding.id}`)
+        patchData.context_text = JSON.stringify({ aiResultData: null })
+      }
+
+      try {
+        await api.patch(`/api/findings/${finding.id}`, patchData)
+      } catch (e) {
+        console.error("Failed to clear state from DB", e)
+      }
+
+      return true
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to delete Basecamp push.")
+      return false
+    } finally {
+      setIsDeletingPush(false)
+    }
+  }
+
   React.useEffect(() => {
     setLocalTitle(finding.title)
   }, [finding.title])
@@ -133,9 +196,12 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
         .filter(Boolean)
     : []
 
-  const handleRunAiCheck = async () => {
+  const handleRunAiCheck = async (
+    forceRetry: boolean | React.MouseEvent = false,
+  ) => {
+    const isForce = forceRetry === true
     setIsAiModalOpen(true)
-    if (aiResultData) return
+    if (aiResultData && !isForce) return
     setIsAiLoading(true)
 
     try {
@@ -144,6 +210,18 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
       })
       setAiResultData(response.data)
       setAiResult(finding.id, getAiResultsText(response.data))
+      sessionStorage.setItem(
+        `aiResult_${finding.id}`,
+        JSON.stringify(response.data),
+      )
+
+      try {
+        await api.patch(`/api/findings/${finding.id}`, {
+          context_text: JSON.stringify({ aiResultData: response.data }),
+        })
+      } catch (err) {
+        console.error("Failed to save AI results:", err)
+      }
     } catch (error) {
       console.error("AI check failed:", error)
       setAiResultData({
@@ -272,7 +350,14 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
                 <input
                   type="checkbox"
                   checked={isManuallyVerified}
-                  onChange={(e) => setIsManuallyVerified(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    if (!checked && isPushed) {
+                      setDeleteModalAction("unverify")
+                    } else {
+                      setIsManuallyVerified(checked)
+                    }
+                  }}
                   className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                 />
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer truncate">
@@ -296,7 +381,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
               </button>
             ) : (
               <>
-                {isManuallyVerified && (
+                {/* {isManuallyVerified && (
                   <button
                     onClick={handlePushToBasecamp}
                     disabled={isPushing || isPushed}
@@ -334,7 +419,114 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
                       </>
                     )}
                   </button>
+                )} */}
+
+                {isManuallyVerified && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (isPushed && commentUrl) {
+                          window.open(
+                            commentUrl,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        } else if (!isPushed) {
+                          handlePushToBasecamp()
+                        }
+                      }}
+                      disabled={isPushing}
+                      className={`btn-unified px-3 flex items-center justify-center transition-all ${isPushed ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-200 cursor-pointer" : "bg-[#0b1016] hover:bg-slate-800 text-white active:scale-95"}`}
+                      title={isPushed ? "View in Basecamp" : "Push to Basecamp"}
+                    >
+                      {isPushing ? (
+                        <span className="text-[11px] font-bold px-1">...</span>
+                      ) : isPushed ? (
+                        <>
+                          <span className="text-slate">Success </span>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 35 30"
+                            fill="currentColor"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="pl-1"
+                          >
+                            <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                          </svg>
+                        </>
+                      ) : (
+                        <>
+                          <span>Push to </span>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 35 30"
+                            fill="currentColor"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="pl-1"
+                          >
+                            <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                          </svg>
+                        </>
+                      )}
+                    </button>
+
+                    {isPushed && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeletePush()
+                        }}
+                        disabled={isDeletingPush}
+                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Delete from Basecamp"
+                      >
+                        {isDeletingPush ? (
+                          <span className="text-[10px] uppercase font-bold animate-pulse">
+                            ...
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1 text-slate-600 dark:text-slate-200 hover:text-red-500 dark:hover:text-red-500 transition-colors">
+                            <span className="text-[8px] font-semibold">
+                              Remove from{""}
+                            </span>
+                            <span>
+                              <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 35 30"
+                                fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className=""
+                              >
+                                <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                              </svg>
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 )}
+
+                <a
+                  href={
+                    finding.pages?.url
+                      ? `https://socialsharepreview.com/?url=${encodeURIComponent(finding.pages.url)}`
+                      : "https://socialsharepreview.com/"
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-unified flex items-center gap-2 bg-[#0b1016] hover:bg-slate-800 text-white"
+                  title="See in monitor"
+                >
+                  <span className="text-[11px]">See in </span>
+                  <span>
+                    <MonitorSmartphone size={14} />
+                  </span>
+                </a>
                 {!isManuallyVerified && (
                   <div className="flex items-center gap-2">
                     <button
@@ -421,7 +613,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
               </div>
             )}
 
-            {!aiResultData && (
+            {!aiResultData && !isPushed && (
               <button
                 onClick={handleRunAiCheck}
                 title="Run AI Check on Social Share Screenshots"
@@ -449,15 +641,41 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
             )}
 
             {aiResultData && (
-              <button
-                onClick={() => setIsAiModalOpen(true)}
-                className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
-              >
-                <span className="flex items-center gap-1">
-                  <Sparkle size={14} />
-                  <span>AI RESULTS</span>
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsAiModalOpen(true)}
+                  className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
+                >
+                  <span className="flex items-center gap-1">
+                    <Sparkle size={14} />
+                    <span>AI RESULTS</span>
+                  </span>
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (isPushed) {
+                      const proceed = window.confirm(
+                        "This finding is already pushed to Basecamp. Retrying the AI check will remove the current Basecamp comment. Do you want to continue?",
+                      )
+                      if (proceed) {
+                        const success = await handleDeletePush()
+                        if (success) handleRunAiCheck(true)
+                      }
+                    } else {
+                      handleRunAiCheck(true)
+                    }
+                  }}
+                  disabled={isAiLoading}
+                  className="p-1 text-slate-400 hover:text-sky-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Retry AI Check"
+                >
+                  <RefreshCw
+                    size={12}
+                    className={isAiLoading ? "animate-spin" : ""}
+                  />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -474,8 +692,8 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
           <div className="bg-slate-50 dark:bg-[#1D2A31] w-full max-w-xl rounded-md shadow-2xl overflow-hidden flex flex-col">
             <div className="p-4 border-b dark:border-slate-700 flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-slate-200 text-sm uppercase tracking-widest flex items-center gap-2">
-                <Sparkles size={16} className="text-purple-500" /> AI Social
-                Share Verification
+                <Sparkles size={16} className="text-sky-400" /> AI Social Share
+                Verification
               </h3>
               <button
                 onClick={() => setIsAiModalOpen(false)}
@@ -487,10 +705,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
             <div className="p-6">
               {isAiLoading ? (
                 <div className="flex flex-col items-center py-12 space-y-4">
-                  <Sparkles
-                    size={32}
-                    className="text-purple-500 animate-pulse"
-                  />
+                  <Sparkles size={32} className="text-sky-400 animate-pulse" />
                   <p className="text-sm text-slate-500">
                     AI is reviewing the screenshots...
                   </p>
@@ -702,6 +917,61 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
                   </div>
                 )
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteModalAction && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDeleteModalAction(null)
+          }}
+        >
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+                Confirm Deletion
+              </h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                This finding is already pushed to Basecamp. Unverifying will
+                remove the current Basecamp comment. What would you like to do?
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  disabled={isDeletingPush}
+                  onClick={async () => {
+                    const success = await handleDeletePush(false)
+                    if (success) setIsManuallyVerified(false)
+                    setDeleteModalAction(null)
+                  }}
+                  className="w-full px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors disabled:opacity-50 flex justify-center"
+                >
+                  {isDeletingPush ? "Deleting..." : "Delete Comment Only"}
+                </button>
+                <button
+                  disabled={isDeletingPush}
+                  onClick={async () => {
+                    const success = await handleDeletePush(true)
+                    if (success) setIsManuallyVerified(false)
+                    setDeleteModalAction(null)
+                  }}
+                  className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 flex justify-center"
+                >
+                  {isDeletingPush
+                    ? "Deleting..."
+                    : "Delete Comment & AI Results"}
+                </button>
+                <button
+                  disabled={isDeletingPush}
+                  onClick={() => setDeleteModalAction(null)}
+                  className="w-full px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

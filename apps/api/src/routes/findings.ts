@@ -113,16 +113,28 @@ router.patch(
   requireRole("qa_engineer"),
   async (req: Request, res: Response) => {
     const { id } = req.params
-    const { severity } = req.body
+    const {
+      severity,
+      context_text,
+      basecamp_comment_id,
+      basecamp_comment_url,
+    } = req.body
 
     if (severity && !["critical", "high", "medium", "low"].includes(severity)) {
       return res.status(400).json({ error: "Invalid severity" })
     }
 
     try {
+      const updatePayload: any = { updated_at: new Date().toISOString() }
+      if (severity !== undefined) updatePayload.severity = severity
+      if (context_text !== undefined) updatePayload.context_text = context_text
+      if (basecamp_comment_id !== undefined)
+        updatePayload.basecamp_comment_id = basecamp_comment_id
+      if (basecamp_comment_url !== undefined)
+        updatePayload.basecamp_comment_url = basecamp_comment_url
       const { data, error } = await supabase
         .from("findings")
-        .update({ severity, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq("id", id)
         .select()
         .single()
@@ -593,7 +605,12 @@ router.post(
 
       const postCommentUrl = `https://3.basecampapi.com/${accountId}/buckets/${bcProjectId}/recordings/${targetTodo.id}/comments.json`
 
-      await axios.post(postCommentUrl, { content: commentHtml }, { headers })
+      const commentResponse = await axios.post(
+        postCommentUrl,
+        { content: commentHtml },
+        { headers },
+      )
+      const createdCommentId = commentResponse.data.id
 
       if (
         finding.check_factor === "paid_media" ||
@@ -604,12 +621,10 @@ router.post(
             notifyOnGoogleChat,
           } = require("../services/googleChatNotificationService")
 
-          // Fetch users assigned to this finding's tasks to properly @mention them in Google Chat
           const { data: relatedTasks } = await supabase
             .from("tasks")
             .select("assigned_to")
             .eq("finding_id", id)
-
           const assignedUserIds = relatedTasks
             ? Array.from(
                 new Set(
@@ -624,7 +639,7 @@ router.post(
             issueNumber: finding.issue_number || 0,
             projectName: siteUrl || "Project",
             issueHeading: finding.title || "Finding",
-            findingsUrl: targetTodo.app_url || "", // The "View Task" button in Google Chat will link directly to the Basecamp To-do!
+            findingsUrl: targetTodo.app_url || "",
             assignedUserIds: assignedUserIds,
             category: (finding.severity || "Finding").toUpperCase(),
             description: finding.description || "",
@@ -640,16 +655,91 @@ router.post(
         }
       }
 
-      // 6. Update finding status to 'confirmed' upon successful push
+      const createdCommentUrl = commentResponse.data.app_url
+
+      // 6. Update finding status to 'confirmed' upon successful push and save the Comment ID and URL
       await supabase
         .from("findings")
-        .update({ status: "confirmed", updated_at: new Date().toISOString() })
+        .update({
+          status: "confirmed",
+          basecamp_comment_id: createdCommentId
+            ? createdCommentId.toString()
+            : null,
+          basecamp_comment_url: createdCommentUrl || null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", id)
-      return res
-        .status(200)
-        .json({ success: true, todoUrl: targetTodo.app_url })
+
+      return res.status(200).json({
+        success: true,
+        todoUrl: targetTodo.app_url,
+        commentUrl: createdCommentUrl,
+      })
     } catch (err: any) {
       logger.error({ error: err.message }, "Direct push to Basecamp failed")
+      return res.status(500).json({ error: err.message })
+    }
+  },
+)
+
+/**
+ * DELETE /api/findings/:id/delete-basecamp-push
+ * Deletes the basecamp comment that was previously pushed, and un-confirms the finding.
+ */
+router.delete(
+  "/:id/delete-basecamp-push",
+  clerkAuth,
+  requireRole("qa_engineer"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params
+
+    try {
+      const { data: finding, error: findingError } = await supabase
+        .from("findings")
+        .select("*, qa_runs:run_id (project_id)")
+        .eq("id", id)
+        .single()
+
+      if (findingError || !finding)
+        return res.status(404).json({ error: "Finding not found" })
+      if (!finding.basecamp_comment_id)
+        return res
+          .status(400)
+          .json({ error: "No Basecamp comment associated with this finding." })
+
+      const projectId = (finding.qa_runs as any).project_id
+      const { getProjectSettings } = require("../lib/getDecryptedSettings")
+      const settings = await getProjectSettings(projectId)
+
+      if (
+        !settings ||
+        !settings.basecamp_token ||
+        !settings.basecamp_account_id
+      ) {
+        return res.status(400).json({ error: "Basecamp settings missing" })
+      }
+
+      const { deleteBasecampComment } = require("../lib/basecampClient")
+      await deleteBasecampComment({
+        token: settings.basecamp_token,
+        accountId: settings.basecamp_account_id,
+        projectId: settings.basecamp_project_id,
+        recordingId: "not-used",
+        commentId: parseInt(finding.basecamp_comment_id, 10),
+      })
+
+      await supabase
+        .from("findings")
+        .update({
+          status: "pending",
+          basecamp_comment_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+
+      return res.status(200).json({ success: true })
+    } catch (err: any) {
+      logger.error({ error: err.message }, "Failed to delete Basecamp push")
       return res.status(500).json({ error: err.message })
     }
   },

@@ -15,6 +15,7 @@ import {
   Sparkle,
   Eye,
   Unlink2,
+  RefreshCw,
 } from "lucide-react"
 import { useBulkDeleteTasks } from "../hooks/useTasks"
 import { useRole } from "../hooks/useRole"
@@ -67,18 +68,31 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
   // AI states
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false)
   const [isAiLoading, setIsAiLoading] = React.useState(false)
-  const [aiResultData, setAiResultData] = React.useState<any>(null)
+  const [aiResultData, setAiResultData] = React.useState<any>(() => {
+    try {
+      const cached = sessionStorage.getItem(`aiResult_${finding.id}`)
+      if (cached) return JSON.parse(cached)
+      if (finding.context_text) {
+        const parsed = JSON.parse(finding.context_text)
+        return parsed.aiResultData || null
+      }
+    } catch (e) {}
+    return null
+  })
 
   // Manual verify checkbox state
+
   const [isManuallyVerified, setIsManuallyVerified] = React.useState(false)
 
   React.useEffect(() => {
     setLocalTitle(finding.title)
   }, [finding.title])
 
-  const handleRunAiCheck = async () => {
+  const handleRunAiCheck = async (
+    forceRetry: boolean | React.MouseEvent = false,
+  ) => {
     setIsAiModalOpen(true)
-    if (aiResultData) return
+    if (aiResultData && forceRetry !== true) return
     setIsAiLoading(true)
 
     try {
@@ -88,6 +102,18 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
 
       setAiResultData(response.data)
       setAiResult(finding.id, getAiResultsText(response.data))
+      sessionStorage.setItem(
+        `aiResult_${finding.id}`,
+        JSON.stringify(response.data),
+      )
+
+      try {
+        await api.patch(`/api/findings/${finding.id}`, {
+          context_text: JSON.stringify({ aiResultData: response.data }),
+        })
+      } catch (err) {
+        console.error("Failed to save AI results:", err)
+      }
     } catch (error) {
       console.error("AI check failed:", error)
       setAiResultData({
@@ -361,15 +387,27 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
             )}
 
             {aiResultData && (
-              <button
-                onClick={() => setIsAiModalOpen(true)}
-                className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
-              >
-                <span className="flex items-center gap-1">
-                  <Sparkle size={14} />
-                  <span>AI RESULTS</span>
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsAiModalOpen(true)}
+                  className="text-xs font-semibold text-sky-400 hover:text-sky-500 tracking-wide"
+                >
+                  <span className="flex items-center gap-1">
+                    <Sparkle size={14} />
+                    <span>AI RESULTS</span>
+                  </span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRunAiCheck(true)
+                  }}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400 transition-colors"
+                  title="Retry AI Scan"
+                >
+                  <RefreshCw size={12} />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -386,7 +424,7 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
           <div className="bg-slate-50 dark:bg-[#1D2A31] w-full max-w-xl rounded-md shadow-2xl overflow-hidden flex flex-col">
             <div className="p-4 border-b dark:border-slate-700 flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-slate-200 text-sm uppercase tracking-widest flex items-center gap-2">
-                <Sparkles size={16} className="text-purple-500" /> AI Plugin
+                <Sparkles size={16} className="text-sky-400" /> AI Plugin
                 Verification
               </h3>
               <button
@@ -399,10 +437,7 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
             <div className="p-6">
               {isAiLoading ? (
                 <div className="flex flex-col items-center py-12 space-y-4">
-                  <Sparkles
-                    size={32}
-                    className="text-purple-500 animate-pulse"
-                  />
+                  <Sparkles size={32} className="text-sky-400 animate-pulse" />
                   <p className="text-sm text-slate-500">
                     AI is reviewing the screenshot...
                   </p>
@@ -410,33 +445,39 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
               ) : (
                 aiResultData && (
                   <div className="space-y-4">
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    <p
+                      className={`text-sm font-bold ${aiResultData.status === "error" ? "text-red-500" : "text-slate-700 dark:text-slate-300"}`}
+                    >
                       {aiResultData.message}
                     </p>
-                    {aiResultData.outdatedPlugins.length > 0 ? (
-                      <div className="bg-red-50 p-4 rounded border border-red-100">
-                        <p className="text-xs font-bold text-red-600 uppercase mb-2">
-                          Outdated Plugins Found:
-                        </p>
-                        {aiResultData.outdatedPlugins.map(
-                          (p: any, idx: number) => (
-                            <p key={idx} className="text-sm text-red-800">
-                              {p.name} (v{p.current} ➔ v{p.available})
+                    {aiResultData.status !== "error" && (
+                      <>
+                        {aiResultData.outdatedPlugins.length > 0 ? (
+                          <div className="bg-red-50 p-4 rounded border border-red-100">
+                            <p className="text-xs font-bold text-red-600 uppercase mb-2">
+                              Outdated Plugins Found:
                             </p>
-                          ),
+                            {aiResultData.outdatedPlugins.map(
+                              (p: any, idx: number) => (
+                                <p key={idx} className="text-sm text-red-800">
+                                  {p.name} (v{p.current} ➔ v{p.available})
+                                </p>
+                              ),
+                            )}
+                          </div>
+                        ) : (
+                          <div className="bg-emerald-50 p-4 rounded border border-emerald-100">
+                            <p className="text-xs font-bold text-emerald-600">
+                              All required plugins are up to date!
+                            </p>
+                          </div>
                         )}
-                      </div>
-                    ) : (
-                      <div className="bg-emerald-50 p-4 rounded border border-emerald-100">
-                        <p className="text-xs font-bold text-emerald-600">
-                          All required plugins are up to date!
+                        <p className="text-[10px] text-slate-500 italic mt-4">
+                          Excluded from check:{" "}
+                          {aiResultData.excludedPlugins?.join(", ")}
                         </p>
-                      </div>
+                      </>
                     )}
-                    <p className="text-[10px] text-slate-500 italic mt-4">
-                      Excluded from check:{" "}
-                      {aiResultData.excludedPlugins.join(", ")}
-                    </p>
                   </div>
                 )
               )}
