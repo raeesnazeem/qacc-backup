@@ -333,14 +333,7 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
               </button>
             ) : (
               <>
-                {!(hasTask || isAssigned) && (
-                  <button
-                    onClick={() => onFalsePositive?.(finding.id)}
-                    className="btn-unified"
-                  >
-                    False Positive
-                  </button>
-                )}
+
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() =>

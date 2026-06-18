@@ -205,11 +205,11 @@ export const TasksTab = ({ project }: TasksTabProps) => {
 
           {selectedTaskIds.length > 0 ? (
             <div className="flex items-center space-x-2">
-              <BulkBasecampPush
+              {/* <BulkBasecampPush
                 taskIds={selectedTaskIds}
                 onComplete={() => setSelectedTaskIds([])}
                 mode="comment"
-              />
+              /> */}
               {selectedInProgressTasks.length > 1 && (
                 <button
                   onClick={() => setIsPendingReminderOpen(true)}
