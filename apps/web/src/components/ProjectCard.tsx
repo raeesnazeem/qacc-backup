@@ -197,7 +197,7 @@ export const ProjectCard = ({ project }: ProjectCardProps) => {
       {/* Manage Team Popover */}
       {isManageOpen && (
         <div
-          className="absolute inset-0 z-20 bg-slate-50/95 backdrop-blur-sm rounded-xl p-6 flex flex-col border border-slate-200 shadow-xl animate-in fade-in zoom-in-95 duration-200"
+          className="absolute inset-0 z-20 bg-slate-50/95 dark:bg-[#1D2A31]/95 backdrop-blur-sm rounded-xl p-6 flex flex-col border border-slate-200 dark:border-slate-800 shadow-xl animate-in fade-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-6">
@@ -227,7 +227,7 @@ export const ProjectCard = ({ project }: ProjectCardProps) => {
                 placeholder="user@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-700 dark:text-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
+                className="w-full bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-700 dark:text-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none hover:border-accent focus:border-accent transition-all"
                 required
               />
             </div>

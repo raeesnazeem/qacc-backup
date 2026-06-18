@@ -84,7 +84,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
 
   const [isDeletingPush, setIsDeletingPush] = React.useState(false)
   const [deleteModalAction, setDeleteModalAction] = React.useState<
-    "unverify" | null
+    "unverify" | "unlink_check" | "unlink_uncheck" | null
   >(null)
 
   const [commentUrl, setCommentUrl] = React.useState<string | null>(
@@ -181,6 +181,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
   const hasTask = finding.tasks && finding.tasks.length > 0
   const isConfirmed = finding.status === "confirmed"
   const isFalsePositive = finding.status === "false_positive"
+  const isLocked = hasTask || isAssigned || isPushed
 
   const cardBorder =
     isConfirmed || isAssigned
@@ -281,7 +282,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
             findingId={finding.id}
             pageId={finding.page_id}
             currentSeverity={finding.severity}
-            canEdit={canAction && !isFalsePositive}
+            canEdit={canAction && !isFalsePositive && !isLocked}
             symbolOnly={true}
           />
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
@@ -296,7 +297,8 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
           <input
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
-            className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
+            readOnly={isLocked}
+            className={`w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isLocked ? "pointer-events-none" : ""}`}
             placeholder="Social Share Heading Check Title"
           />
         </div>
@@ -352,7 +354,11 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
                   checked={isManuallyVerified}
                   onChange={(e) => {
                     const checked = e.target.checked
-                    if (!checked && isPushed) {
+                    if (hasTask || isAssigned) {
+                      setDeleteModalAction(
+                        checked ? "unlink_check" : "unlink_uncheck",
+                      )
+                    } else if (!checked && isPushed) {
                       setDeleteModalAction("unverify")
                     } else {
                       setIsManuallyVerified(checked)
@@ -929,50 +935,95 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
           }}
         >
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-                Confirm Deletion
-              </h3>
-            </div>
-            <div className="p-4 space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                This finding is already pushed to Basecamp. Unverifying will
-                remove the current Basecamp comment. What would you like to do?
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  disabled={isDeletingPush}
-                  onClick={async () => {
-                    const success = await handleDeletePush(false)
-                    if (success) setIsManuallyVerified(false)
-                    setDeleteModalAction(null)
-                  }}
-                  className="w-full px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors disabled:opacity-50 flex justify-center"
-                >
-                  {isDeletingPush ? "Deleting..." : "Delete Comment Only"}
-                </button>
-                <button
-                  disabled={isDeletingPush}
-                  onClick={async () => {
-                    const success = await handleDeletePush(true)
-                    if (success) setIsManuallyVerified(false)
-                    setDeleteModalAction(null)
-                  }}
-                  className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 flex justify-center"
-                >
-                  {isDeletingPush
-                    ? "Deleting..."
-                    : "Delete Comment & AI Results"}
-                </button>
-                <button
-                  disabled={isDeletingPush}
-                  onClick={() => setDeleteModalAction(null)}
-                  className="w-full px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            {deleteModalAction === "unverify" ? (
+              <>
+                <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+                    Confirm Deletion
+                  </h3>
+                </div>
+                <div className="p-4 space-y-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    This finding is already pushed to Basecamp. Unverifying will
+                    remove the current Basecamp comment. What would you like to
+                    do?
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      disabled={isDeletingPush}
+                      onClick={async () => {
+                        const success = await handleDeletePush(false)
+                        if (success) setIsManuallyVerified(false)
+                        setDeleteModalAction(null)
+                      }}
+                      className="w-full px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors disabled:opacity-50 flex justify-center"
+                    >
+                      {isDeletingPush ? "Deleting..." : "Delete Comment Only"}
+                    </button>
+                    <button
+                      disabled={isDeletingPush}
+                      onClick={async () => {
+                        const success = await handleDeletePush(true)
+                        if (success) setIsManuallyVerified(false)
+                        setDeleteModalAction(null)
+                      }}
+                      className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 flex justify-center"
+                    >
+                      {isDeletingPush
+                        ? "Deleting..."
+                        : "Delete Comment & AI Results"}
+                    </button>
+                    <button
+                      disabled={isDeletingPush}
+                      onClick={() => setDeleteModalAction(null)}
+                      className="w-full px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+                    Unlink Task
+                  </h3>
+                </div>
+                <div className="p-4 space-y-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    This finding is currently linked to a task. Changing its
+                    status will unlink the task. Do you wish to proceed?
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      disabled={isDeleting}
+                      onClick={() => {
+                        bulkDeleteTasks(assignedTaskIds)
+                        const action = deleteModalAction
+                        setDeleteModalAction(null)
+
+                        if (action === "unlink_uncheck" && isPushed) {
+                          setTimeout(() => setDeleteModalAction("unverify"), 10)
+                        } else {
+                          setIsManuallyVerified(action === "unlink_check")
+                        }
+                      }}
+                      className="w-full px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-md transition-colors disabled:opacity-50 flex justify-center"
+                    >
+                      Proceed & Unlink Task
+                    </button>
+                    <button
+                      disabled={isDeleting}
+                      onClick={() => setDeleteModalAction(null)}
+                      className="w-full px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

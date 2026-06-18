@@ -126,6 +126,12 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
       setAiResult(finding.id, getAiResultsText(data))
     } catch (error) {
       console.error("AI check failed:", error)
+      setAiResultData({
+        status: "error",
+        message: "Failed to connect to AI server. Please try again.",
+        missingInDev: [],
+        missingInLive: [],
+      })
     } finally {
       // 6. Stop the loading spinner
       setIsAiLoading(false)
@@ -614,6 +620,14 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
               {/* If the data is ready, show the missing pages */}
               {!isAiLoading && aiResultData && (
                 <div className="space-y-6">
+                  {aiResultData.message && (
+                    <p
+                      className={`text-sm font-bold ${aiResultData.status === "error" ? "text-red-500" : "text-slate-700 dark:text-slate-300"}`}
+                    >
+                      {aiResultData.message}
+                    </p>
+                  )}
+
                   {/* Missing in Dev Section */}
                   {aiResultData.missingInDev &&
                     aiResultData.missingInDev.length > 0 && (
@@ -675,7 +689,8 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
                     )}
 
                   {/* What if AI found a perfect match for everything? */}
-                  {aiResultData.missingInDev?.length === 0 &&
+                  {aiResultData.status !== "error" &&
+                    aiResultData.missingInDev?.length === 0 &&
                     aiResultData.missingInLive?.length === 0 && (
                       <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-green-200 dark:border-green-900/30 rounded-lg bg-green-50/50 dark:bg-green-900/10">
                         <p className="text-sm text-green-600 dark:text-green-400 font-bold tracking-wide">
