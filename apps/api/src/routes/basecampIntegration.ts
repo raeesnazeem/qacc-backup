@@ -300,16 +300,21 @@ router.post(
         task.findings?.check_factor === "logo_chatbot" ||
         (task as any).check_factor === "logo_chatbot"
 
+      const isUrlTabCompare =
+        task.findings?.check_factor === "url_tab_compare" ||
+        (task as any).check_factor === "url_tab_compare"
+
       let appUrl = ""
       if (
         isHeroMedia ||
         isDeadLink ||
         isPrivacyPolicy ||
         isSocialShare ||
-        isLogoChatbot
+        isLogoChatbot ||
+        isUrlTabCompare
       ) {
         console.log(
-          `[BasecampPush] Task is a ${isHeroMedia ? "Hero Media" : isDeadLink ? "Dead Link" : isPrivacyPolicy ? "Privacy Policy" : isSocialShare ? "Social Share" : isLogoChatbot ? "Logo on Chatbot" : "Other"} finding. Locating specific checklist item...`,
+          `[BasecampPush] Task is a ${isHeroMedia ? "Hero Media" : isDeadLink ? "Dead Link" : isPrivacyPolicy ? "Privacy Policy" : isSocialShare ? "Social Share" : isLogoChatbot ? "Logo on Chatbot" : isUrlTabCompare ? "Url Tab Compare" : "Other"} finding. Locating specific checklist item...`,
         )
 
         const headers = {
@@ -426,6 +431,19 @@ router.post(
           if (!targetTodo) {
             throw new Error(
               `To-do checklist item "QA - Check if website logo is added to the chat bot." not found in Basecamp checklist "${targetList.name}".`,
+            )
+          }
+        } else if (isUrlTabCompare) {
+          targetTodo = allTodos.find((todo: any) =>
+            todo.content
+              .toLowerCase()
+              .includes(
+                "qa - check url is matching and check for the tab name",
+              ),
+          )
+          if (!targetTodo) {
+            throw new Error(
+              `To-do checklist item "QA - Check URL is Matching and check for the tab name" not found in Basecamp checklist "${targetList.name}".`,
             )
           }
         } else {
@@ -1867,11 +1885,9 @@ router.post(
         "qa_engineer",
       ].includes(role)
       if (!isQaOrHigher && !(role === "developer" && isFeedback)) {
-        return res
-          .status(403)
-          .json({
-            error: "Insufficient permissions. Required: qa_engineer or higher",
-          })
+        return res.status(403).json({
+          error: "Insufficient permissions. Required: qa_engineer or higher",
+        })
       }
 
       const [projectSettings, currentUserResult] = await Promise.all([

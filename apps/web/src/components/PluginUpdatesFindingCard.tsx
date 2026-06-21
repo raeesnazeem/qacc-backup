@@ -81,8 +81,77 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
   })
 
   // Manual verify checkbox state
+  const initialIsPushed =
+    finding.status === "confirmed" &&
+    (!!(finding as any).basecamp_comment_url ||
+      !!(finding as any).basecamp_comment_id)
+  const [isManuallyVerified, setIsManuallyVerified] =
+    React.useState(initialIsPushed)
 
-  const [isManuallyVerified, setIsManuallyVerified] = React.useState(false)
+  const [isPushing, setIsPushing] = React.useState(false)
+  const [isPushed, setIsPushed] = React.useState(initialIsPushed)
+
+  const [isDeletingPush, setIsDeletingPush] = React.useState(false)
+  const [deleteModalAction, setDeleteModalAction] = React.useState<
+    "unverify" | "unlink_check" | "unlink_uncheck" | null
+  >(null)
+
+  const [commentUrl, setCommentUrl] = React.useState<string | null>(
+    finding.status === "confirmed"
+      ? (finding as any).basecamp_comment_url || null
+      : null,
+  )
+
+  const handlePushToBasecamp = async () => {
+    setIsPushing(true)
+    try {
+      const response = await api.post(
+        `/api/findings/${finding.id}/push-basecamp`,
+        {
+          aiResultsText: getAiResultsText(aiResultData),
+        },
+      )
+      if (response.data.commentUrl) setCommentUrl(response.data.commentUrl)
+      setIsPushed(true)
+      if (onConfirm) onConfirm(finding.id)
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to push finding to Basecamp.")
+    } finally {
+      setIsPushing(false)
+    }
+  }
+
+  const handleDeletePush = async (clearAiResults: boolean = false) => {
+    setIsDeletingPush(true)
+    try {
+      await api.delete(`/api/findings/${finding.id}/delete-basecamp-push`)
+      setIsPushed(false)
+
+      const patchData: any = {
+        basecamp_comment_id: null,
+        basecamp_comment_url: null,
+      }
+
+      if (clearAiResults) {
+        setAiResultData(null)
+        sessionStorage.removeItem(`aiResult_${finding.id}`)
+        patchData.context_text = JSON.stringify({ aiResultData: null })
+      }
+
+      try {
+        await api.patch(`/api/findings/${finding.id}`, patchData)
+      } catch (e) {
+        console.error("Failed to clear state from DB", e)
+      }
+
+      return true
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to delete Basecamp push.")
+      return false
+    } finally {
+      setIsDeletingPush(false)
+    }
+  }
 
   React.useEffect(() => {
     setLocalTitle(finding.title)
@@ -132,7 +201,7 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
   const isFalsePositive = finding.status === "false_positive"
 
   const cardBorder =
-    isConfirmed || isAssigned
+    isPushed || isAssigned
       ? "border-emerald-500 ring-1 ring-emerald-500/20"
       : isFalsePositive
         ? "opacity-60 border-slate-200 dark:border-slate-800"
@@ -249,7 +318,18 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
             <input
               type="checkbox"
               checked={isManuallyVerified}
-              onChange={(e) => setIsManuallyVerified(e.target.checked)}
+              onChange={(e) => {
+                const checked = e.target.checked
+                if (hasTask || isAssigned) {
+                  setDeleteModalAction(
+                    checked ? "unlink_check" : "unlink_uncheck",
+                  )
+                } else if (!checked && isPushed) {
+                  setDeleteModalAction("unverify")
+                } else {
+                  setIsManuallyVerified(checked)
+                }
+              }}
               className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
             />
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer truncate">
@@ -272,70 +352,156 @@ export const PluginUpdatesFindingCard: React.FC<FindingCardProps> = ({
               </button>
             ) : (
               <>
-                {!(hasTask || isAssigned) && (
-                  <button
-                    onClick={() => onFalsePositive?.(finding.id)}
-                    className="btn-unified"
-                  >
-                    False Positive
-                  </button>
+                {isManuallyVerified && (
+                  <div className="flex items-center gap-1 mr-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (isPushed && commentUrl) {
+                          window.open(
+                            commentUrl,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        } else if (!isPushed) {
+                          handlePushToBasecamp()
+                        }
+                      }}
+                      disabled={isPushing}
+                      className={`btn-unified px-3 flex items-center justify-center transition-all ${isPushed ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-200 cursor-pointer" : "bg-[#0b1016] hover:bg-slate-800 text-white active:scale-95"}`}
+                      title={isPushed ? "View in Basecamp" : "Push to Basecamp"}
+                    >
+                      {isPushing ? (
+                        <span className="text-[11px] font-bold px-1">...</span>
+                      ) : isPushed ? (
+                        <>
+                          <span className="text-slate">Success </span>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 35 30"
+                            fill="currentColor"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="pl-1"
+                          >
+                            <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                          </svg>
+                        </>
+                      ) : (
+                        <>
+                          <span>Push to </span>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 35 30"
+                            fill="currentColor"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="pl-1"
+                          >
+                            <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                          </svg>
+                        </>
+                      )}
+                    </button>
+
+                    {isPushed && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeletePush()
+                        }}
+                        disabled={isDeletingPush}
+                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Delete from Basecamp"
+                      >
+                        {isDeletingPush ? (
+                          <span className="text-[10px] uppercase font-bold animate-pulse">
+                            ...
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1 text-slate-600 dark:text-slate-200 hover:text-red-500 dark:hover:text-red-500 transition-colors">
+                            <span className="text-[8px] font-semibold">
+                              Remove from
+                            </span>
+                            <span>
+                              <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 35 30"
+                                fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                              </svg>
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 )}
-                <button
-                  onClick={() =>
-                    onCreateTask?.({
-                      ...finding,
-                      title: localTitle,
-                      description:
-                        (finding.description || "") +
-                        (aiResultData ? getAiResultsText(aiResultData) : ""),
+                {!isManuallyVerified && (
+                  <>
+                    <button
+                      onClick={() =>
+                        onCreateTask?.({
+                          ...finding,
+                          title: localTitle,
+                          description:
+                            (finding.description || "") +
+                            (aiResultData
+                              ? getAiResultsText(aiResultData)
+                              : ""),
 
-                      gallery_images: galleryImages,
-                    })
-                  }
-                  disabled={hasTask || isAssigned}
-                  className={`btn-unified ${hasTask || isAssigned ? "bg-accent text-white cursor-not-allowed" : ""}`}
-                >
-                  {hasTask || isAssigned ? "Task Linked" : "Add to Tasks"}
-                </button>
+                          gallery_images: galleryImages,
+                        })
+                      }
+                      disabled={hasTask || isAssigned}
+                      className={`btn-unified ${hasTask || isAssigned ? "bg-accent text-white cursor-not-allowed" : ""}`}
+                    >
+                      {hasTask || isAssigned ? "Task Linked" : "Add to Tasks"}
+                    </button>
 
-                {(hasTask || isAssigned) &&
-                  (() => {
-                    const activeTaskIds =
-                      assignedTaskIds && assignedTaskIds.length > 0
-                        ? assignedTaskIds
-                        : finding.tasks?.map((t: any) => t.id) || []
+                    {(hasTask || isAssigned) &&
+                      (() => {
+                        const activeTaskIds =
+                          assignedTaskIds && assignedTaskIds.length > 0
+                            ? assignedTaskIds
+                            : finding.tasks?.map((t: any) => t.id) || []
 
-                    if (
-                      activeTaskIds.length === 0 ||
-                      activeTaskIds[0] === finding.id
-                    )
-                      return null
+                        if (
+                          activeTaskIds.length === 0 ||
+                          activeTaskIds[0] === finding.id
+                        )
+                          return null
 
-                    return (
-                      <div className="ml-1 flex items-center gap-1">
-                        <Link
-                          to={`/projects/${projectId}?tab=tasks&taskId=${activeTaskIds[0]}`}
-                          target="_blank"
-                          className="text-slate-400 hover:text-accent transition-colors"
-                          title="View Task"
-                        >
-                          <Eye size={14} />
-                        </Link>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            bulkDeleteTasks(activeTaskIds)
-                          }}
-                          disabled={isDeleting}
-                          className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
-                          title="Unlink Task"
-                        >
-                          <Unlink2 size={16} />
-                        </button>
-                      </div>
-                    )
-                  })()}
+                        return (
+                          <div className="ml-1 flex items-center gap-1">
+                            <Link
+                              to={`/projects/${projectId}?tab=tasks&taskId=${activeTaskIds[0]}`}
+                              target="_blank"
+                              className="text-slate-400 hover:text-accent transition-colors"
+                              title="View Task"
+                            >
+                              <Eye size={14} />
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                bulkDeleteTasks(activeTaskIds)
+                              }}
+                              disabled={isDeleting}
+                              className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
+                              title="Unlink Task"
+                            >
+                              <Unlink2 size={16} />
+                            </button>
+                          </div>
+                        )
+                      })()}
+                  </>
+                )}
               </>
             )}
           </div>

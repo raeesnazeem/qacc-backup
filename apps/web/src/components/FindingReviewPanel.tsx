@@ -34,6 +34,7 @@ interface FindingReviewPanelProps {
   onSingleCreateTask?: (finding: QAFinding) => void
   onAddToStage?: (findings: QAFinding[]) => void
   findingToTaskMap?: Record<string, { taskIds: string[]; assignedUsers: any[] }>
+  hideSummary?: boolean
 }
 
 const DonutChart = ({
@@ -107,6 +108,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
   onSingleAssign,
   onAddToStage,
   findingToTaskMap = {},
+  hideSummary,
 }) => {
   const { canDo } = useRole()
   const canAction = canDo("qa_engineer")
@@ -204,107 +206,109 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
   return (
     <div className="flex flex-col w-full space-y-8">
       {/* Summary Dashboard */}
-      <div className="bg-slate-200/10 dark:bg-[#1d2a31]/30 rounded-md p-8 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative group">
-        <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
-          <BarChart3 size={160} />
-        </div>
-
-        <div className="flex flex-col lg:flex-row items-center gap-10 relative z-10">
-          {/* Resolved Progress Donut */}
-          <div className="shrink-0 bg-slate-50 dark:bg-[#1d2a31]/50 p-4 rounded-md border border-slate-100 dark:border-slate-700 shadow-inner">
-            <DonutChart percentage={stats.resolvedPercentage} />
+      {!hideSummary && (
+        <div className="bg-slate-200/10 dark:bg-[#1d2a31]/30 rounded-md p-8 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+            <BarChart3 size={160} />
           </div>
 
-          <div className="flex-1 space-y-8 w-full">
-            {/* Severity Breakdown Text */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em]">
-                  Audit Summary
-                </h4>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl font-bold text-red-600">
-                    {stats.critical}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    Critical
-                  </span>
-                </div>
-                <div className="h-4 w-px bg-slate-200 dark:bg-[#1d2a31]" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl font-bold text-orange-500">
-                    {stats.high}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    High
-                  </span>
-                </div>
-                <div className="h-4 w-px bg-slate-200 dark:bg-[#1d2a31]" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl font-bold text-amber-500">
-                    {stats.medium}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    Medium
-                  </span>
-                </div>
-                <div className="h-4 w-px bg-slate-200 dark:bg-[#1d2a31]" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl font-bold text-blue-500">
-                    {stats.low}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    Low
-                  </span>
-                </div>
-                <span className="text-[10px] font-medium text-slate-400 italic ml-2">
-                  findings found
-                </span>
-              </div>
+          <div className="flex flex-col lg:flex-row items-center gap-10 relative z-10">
+            {/* Resolved Progress Donut */}
+            <div className="shrink-0 bg-slate-50 dark:bg-[#1d2a31]/50 p-4 rounded-md border border-slate-100 dark:border-slate-700 shadow-inner">
+              <DonutChart percentage={stats.resolvedPercentage} />
             </div>
 
-            {/* Status Breakdown Text */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <h4 className="text-[10px] font-bold uppercase">
-                  Status Overview
-                </h4>
+            <div className="flex-1 space-y-8 w-full">
+              {/* Severity Breakdown Text */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.2em]">
+                    Audit Summary
+                  </h4>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl font-bold text-red-600">
+                      {stats.critical}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      Critical
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-[#1d2a31]" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl font-bold text-orange-500">
+                      {stats.high}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      High
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-[#1d2a31]" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl font-bold text-amber-500">
+                      {stats.medium}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      Medium
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-[#1d2a31]" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl font-bold text-blue-500">
+                      {stats.low}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      Low
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-400 italic ml-2">
+                    findings found
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
-                    {stats.confirmed}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    Confirmed
-                  </span>
+
+              {/* Status Breakdown Text */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <h4 className="text-[10px] font-bold uppercase">
+                    Status Overview
+                  </h4>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-slate-400" />
-                  <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
-                    {stats.falsePositives}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    False Positives
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
-                    {stats.open}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                    Open for Review
-                  </span>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                      {stats.confirmed}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      Confirmed
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-slate-400" />
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                      {stats.falsePositives}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      False Positives
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                      {stats.open}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                      Open for Review
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* General Run Findings Section */}
       {generalFindings && generalFindings.length > 0 && (

@@ -56,7 +56,11 @@ export const ProjectDetailPage = () => {
   }, [searchParams, activeTab])
 
   useEffect(() => {
-    if (activeTab === "tasks" && !location.state?.runsFixApplied) {
+    if (
+      activeTab === "tasks" &&
+      isDeveloper &&
+      !location.state?.runsFixApplied
+    ) {
       const taskId = searchParams.get("taskId")
       navigate(
         isDeveloper
@@ -170,20 +174,30 @@ export const ProjectDetailPage = () => {
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
       {/* Breadcrumbs & Back */}
       <div className="flex items-center space-x-4">
-        <Link
-          to={
-            activeTab === "tasks"
-              ? isDeveloper
-                ? `/projects/${id}?tab=overview`
-                : `/projects/${id}?tab=runs`
-              : ["runs", "team", "settings"].includes(activeTab)
-                ? `/projects/${id}?tab=overview`
-                : "/projects"
-          }
-          className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-700 shadow-none hover:shadow-sm"
-        >
-          <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-        </Link>
+        {activeTab === "tasks" && !isDeveloper ? (
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-700 shadow-none hover:shadow-sm"
+          >
+            <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          </button>
+        ) : (
+          <Link
+            to={
+              activeTab === "tasks"
+                ? isDeveloper
+                  ? `/projects/${id}?tab=overview`
+                  : `/projects/${id}?tab=runs`
+                : ["runs", "team", "settings"].includes(activeTab)
+                  ? `/projects/${id}?tab=overview`
+                  : "/projects"
+            }
+            className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-700 shadow-none hover:shadow-sm"
+          >
+            <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          </Link>
+        )}
+
         <div className="flex items-center space-x-2 text-sm font-medium text-slate-400 dark:text-slate-500">
           <Link
             to="/projects"
@@ -194,16 +208,22 @@ export const ProjectDetailPage = () => {
           <span>/</span>
           {activeTab === "tasks" ? (
             <>
-              <Link
-                to={
-                  isDeveloper
-                    ? `/projects/${id}?tab=overview`
-                    : `/projects/${id}?tab=runs`
-                }
-                className="hover:text-accent dark:hover:text-accent transition-colors"
-              >
-                {project.name}
-              </Link>
+              {!isDeveloper ? (
+                <button
+                  onClick={() => navigate(-1)}
+                  className="hover:text-accent dark:hover:text-accent transition-colors"
+                >
+                  {project.name}
+                </button>
+              ) : (
+                <Link
+                  to={`/projects/${id}?tab=overview`}
+                  className="hover:text-accent dark:hover:text-accent transition-colors"
+                >
+                  {project.name}
+                </Link>
+              )}
+
               <span>/</span>
               <span className="text-slate-900 dark:text-slate-200">Tasks</span>
             </>

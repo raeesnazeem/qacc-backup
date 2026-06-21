@@ -107,7 +107,14 @@ export const RunDetailPage = () => {
     | "woocommerce"
     | "report"
     | "recordings"
-  >("overview")
+  >(() => {
+    return (sessionStorage.getItem(`runTab_${runId}`) as any) || "overview"
+  })
+
+  useEffect(() => {
+    if (activeTab) sessionStorage.setItem(`runTab_${runId}`, activeTab)
+  }, [activeTab, runId])
+
   const [recordingsSubTab, setRecordingsSubTab] = useState<"full" | "history">(
     "full",
   )
@@ -120,9 +127,11 @@ export const RunDetailPage = () => {
       setActiveTab("recordings")
       setRecordingsSubTab("full")
     } else {
-      setActiveTab("overview")
+      const savedTab = sessionStorage.getItem(`runTab_${runId}`)
+      setActiveTab((savedTab as any) || "overview")
       setRecordingsSubTab("full")
     }
+
     window.scrollTo(0, 0)
   }, [runId, location.hash])
 
@@ -1807,13 +1816,171 @@ export const RunDetailPage = () => {
           </div>
 
           <div className="bg-slate-50 dark:bg-[#1D2A31] border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden shadow-sm w-full">
-            <div className="bg-slate-50 dark:bg-[#1D2A31] border-b border-slate-100 dark:border-slate-600 p-6">
-              <h3 className="font-bold text-slate-900 dark:text-slate-200 text-lg">
-                Run-level & Project Plan Findings
-              </h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
-                {runGeneralFindings.length} General Issues Detected
-              </p>
+            <div className="bg-slate-50 dark:bg-[#1D2A31] border-b border-slate-200 dark:border-slate-600 p-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
+              {(() => {
+                const total = runGeneralFindings.length
+                const confirmed = runGeneralFindings.filter(
+                  (f) => f.status === "confirmed",
+                ).length
+                const falsePositives = runGeneralFindings.filter(
+                  (f) => f.status === "false_positive",
+                ).length
+                const open = runGeneralFindings.filter(
+                  (f) => f.status === "open",
+                ).length
+                const resolved = confirmed + falsePositives
+                const critical = runGeneralFindings.filter(
+                  (f) => f.severity === "critical",
+                ).length
+                const high = runGeneralFindings.filter(
+                  (f) => f.severity === "high",
+                ).length
+                const medium = runGeneralFindings.filter(
+                  (f) => f.severity === "medium",
+                ).length
+                const low = runGeneralFindings.filter(
+                  (f) => f.severity === "low",
+                ).length
+                const resolvedPercentage =
+                  total > 0 ? Math.round((resolved / total) * 100) : 0
+
+                const radius = 18
+                const stroke = 3
+                const normalizedRadius = radius - stroke / 2
+                const circumference = normalizedRadius * 2 * Math.PI
+                const strokeDashoffset =
+                  circumference - (resolvedPercentage / 100) * circumference
+
+                return (
+                  <div className="flex flex-wrap items-center gap-8">
+                    {/* Progress circle */}
+                    <div className="pr-8 border-r border-slate-200 dark:border-slate-700">
+                      <div className="relative flex items-center justify-center w-14 h-14">
+                        <svg
+                          className="w-full h-full transform -rotate-90"
+                          viewBox="0 0 36 36"
+                        >
+                          <circle
+                            stroke="#f1f5f9"
+                            fill="transparent"
+                            strokeWidth={stroke}
+                            r={normalizedRadius}
+                            cx="18"
+                            cy="18"
+                            className="dark:stroke-slate-700"
+                          />
+                          <circle
+                            stroke="#86B0A3"
+                            fill="transparent"
+                            strokeWidth={stroke}
+                            strokeDasharray={`${circumference} ${circumference}`}
+                            style={{ strokeDashoffset }}
+                            strokeLinecap="round"
+                            r={normalizedRadius}
+                            cx="18"
+                            cy="18"
+                            className="transition-all duration-1000 ease-out"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-xs font-bold text-slate-900 dark:text-slate-200">
+                            {resolvedPercentage}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Audit summary */}
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Audit Summary
+                      </p>
+                      <div className="flex items-center gap-x-3 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[18px] text-red-600">
+                            {critical}
+                          </span>
+                          <span className="font-bold text-[13px] Capitalize text-slate-500 dark:text-slate-100">
+                            Critical
+                          </span>
+                        </div>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          |
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[18px] text-orange-600">
+                            {high}
+                          </span>
+                          <span className="font-bold text-[13px] Capitalize text-slate-500 dark:text-slate-100">
+                            High
+                          </span>
+                        </div>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          |
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[18px] text-amber-600">
+                            {medium}
+                          </span>
+                          <span className="font-bold text-[13px] Capitalize text-slate-500 dark:text-slate-100">
+                            Medium
+                          </span>
+                        </div>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          |
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[18px] text-sky-600">
+                            {low}
+                          </span>
+                          <span className="font-bold text-[13px] Capitalize text-slate-500 dark:text-slate-100">
+                            Low
+                          </span>
+                        </div>
+                        <span className="font-medium text-[13px] text-slate-400 ml-1">
+                          findings found
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status overview */}
+                    <div className="border-l border-slate-200 dark:border-slate-700 pl-8">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Status Overview
+                      </p>
+                      <div className="flex items-center gap-x-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="font-bold text-slate-900 dark:text-slate-200">
+                            {confirmed}
+                          </span>
+                          <span className="font-semibold text-slate-500 uppercase">
+                            Confirmed
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          <span className="font-bold text-slate-900 dark:text-slate-200">
+                            {falsePositives}
+                          </span>
+                          <span className="font-semibold text-slate-500 uppercase">
+                            False Positives
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          <span className="font-bold text-slate-900 dark:text-slate-200">
+                            {open}
+                          </span>
+                          <span className="font-semibold text-slate-500 uppercase">
+                            Open for Review
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="p-8">
@@ -1825,6 +1992,7 @@ export const RunDetailPage = () => {
                 <FindingReviewPanel
                   findings={runGeneralFindings}
                   generalFindings={[]}
+                  hideSummary={true}
                   onSingleConfirm={handleConfirmFinding}
                   onSingleFalsePositive={handleFalsePositiveFinding}
                   onSingleCreateTask={(finding) => handleAddToStage([finding])}

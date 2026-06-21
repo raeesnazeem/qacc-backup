@@ -421,6 +421,28 @@ router.post(
             `To-do checklist item "QA - Check if website logo is added to the chat bot." not found in Basecamp checklist "${targetList.name}".`,
           )
         }
+      } else if (finding.check_factor === "url_tab_compare") {
+        targetTodo = allTodos.find((todo: any) =>
+          todo.content
+            .toLowerCase()
+            .includes("qa - check url is matching and check for the tab name"),
+        )
+        if (!targetTodo) {
+          throw new Error(
+            `To-do checklist item "QA - Check URL is Matching and check for the tab name" not found in Basecamp checklist "${targetList.name}".`,
+          )
+        }
+      } else if (finding.check_factor === "verify_plugin_updates") {
+        targetTodo = allTodos.find((todo: any) =>
+          todo.content
+            .toLowerCase()
+            .includes("qa - before release - verify all plug-ins are updated"),
+        )
+        if (!targetTodo) {
+          throw new Error(
+            `To-do checklist item "QA - Before Release - Verify ALL plug-ins are updated | Must verify then only start all pre-release tasks." not found in Basecamp checklist "${targetList.name}".`,
+          )
+        }
       }
 
       // 4. Extract screenshots: split comma-separated list and reuse the worker's pre-captured reviews proof
@@ -590,6 +612,17 @@ router.post(
           ${aiResultsText ? `<br/><br/><div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 16px;"><strong>${aiResultsText.replace(/\n/g, "<br/>")}</strong></div>` : ""}
           <br/><br/>
           <em>Sent automatically via QA Command Center</em>
+                </div>
+        `.trim()
+      } else if (finding.check_factor === "url_tab_compare") {
+        const { urlsTableHtml, aiResultsText } = req.body || {}
+        commentHtml = `
+        <div style="font-family: sans-serif; line-height: 1.5;">
+          <strong>URL & Tab Compare Verification</strong><br/>
+          ${urlsTableHtml || ""}
+          ${aiResultsText ? `<br/><div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 16px;"><strong>${aiResultsText.replace(/\n/g, "<br/>")}</strong></div>` : ""}
+          <br/>
+          <em>Sent automatically via QA Command Center</em>
         </div>
         `.trim()
       } else if (finding.check_factor === "logo_chatbot") {
@@ -597,7 +630,20 @@ router.post(
         commentHtml = `
         <div style="font-family: sans-serif; line-height: 1.5;">
           <strong>Logo on Chatbot Verification</strong><br/><br/>
-          Logo on chatbot verified? <strong>${isLogoVerified ? "YES" : "NO"}</strong><br/><br/>
+                    Logo on chatbot verified? <strong>${isLogoVerified ? "YES" : "NO"}</strong><br/><br/>
+          <em>Sent automatically via QA Command Center</em>
+        </div>
+        `.trim()
+      } else if (finding.check_factor === "verify_plugin_updates") {
+        const { aiResultsText } = req.body || {}
+        commentHtml = `
+        <div style="font-family: sans-serif; line-height: 1.5;">
+          <strong>Plugin Updates Verification</strong><br/><br/>
+          Plugin updates have been verified.<br/><br/>
+          <strong>Screenshot:</strong><br/>
+          <a href="${screenshot1Url}" target="_blank"><img src="${screenshot1Url}" width="500" style="border: 1px solid #e3e4e6; border-radius: 6px; margin-bottom: 16px;" /></a>
+          ${aiResultsText ? `<br/><br/><div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 16px;"><strong>${aiResultsText.replace(/\n/g, "<br/>")}</strong></div>` : ""}
+          <br/><br/>
           <em>Sent automatically via QA Command Center</em>
         </div>
         `.trim()

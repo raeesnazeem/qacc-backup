@@ -209,6 +209,7 @@ export const useUpdateFinding = (pageId: string | null) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["findings", pageId] })
+      queryClient.invalidateQueries({ queryKey: ["run-findings"] })
     },
   })
 }
