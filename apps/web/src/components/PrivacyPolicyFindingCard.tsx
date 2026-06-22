@@ -279,7 +279,7 @@ export const PrivacyPolicyFindingCard: React.FC<FindingCardProps> = ({
             findingId={finding.id}
             pageId={finding.page_id}
             currentSeverity={finding.severity}
-            canEdit={!isFalsePositive}
+            canEdit={!isFalsePositive && !isLocked}
             symbolOnly={true}
           />
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
@@ -295,8 +295,9 @@ export const PrivacyPolicyFindingCard: React.FC<FindingCardProps> = ({
       <div className="relative group/input">
         <input
           value={localTitle}
+          readOnly={isLocked}
           onChange={(e) => setLocalTitle(e.target.value)}
-          className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
+          className={`w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isLocked ? "pointer-events-none" : ""}`}
           placeholder="Input for Heading to be entered by Admin / QA"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/input:opacity-100 transition-opacity">
@@ -362,12 +363,12 @@ export const PrivacyPolicyFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isPrivacyPolicyScreenshotVerified}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (isLocked) return
                       setIsPrivacyPolicyScreenshotVerified(e.target.checked)
-                    }
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     {isPrivacyPolicyScreenshotVerified
@@ -378,10 +379,12 @@ export const PrivacyPolicyFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isPageVerified}
-                    onChange={(e) => setIsPageVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsPageVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     {isPageVerified ? "Page Verified" : "Verify Page"}
@@ -391,10 +394,12 @@ export const PrivacyPolicyFindingCard: React.FC<FindingCardProps> = ({
                   <label className="flex items-center gap-2 group/cb">
                     <input
                       type="checkbox"
-                      disabled={isPushed}
                       checked={isContentVerified}
-                      onChange={(e) => setIsContentVerified(e.target.checked)}
-                      className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                      onChange={(e) => {
+                        if (isLocked) return
+                        setIsContentVerified(e.target.checked)
+                      }}
+                      className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                     />
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                       {isContentVerified

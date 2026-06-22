@@ -1070,7 +1070,7 @@ export const RunDetailPage = () => {
           </span>
         </Link>
         <Link
-          to={`/projects/${projectId}?tab=tasks`}
+          to={`/projects/${projectId}?tab=tasks&runId=${runId}`}
           className="text-slate-400 hover:text-accent transition-colors group relative flex items-center"
         >
           <CheckSquare size={25} />
@@ -1816,8 +1816,16 @@ export const RunDetailPage = () => {
                 const confirmed = runGeneralFindings.filter((f) => {
                   const hasTask = f.tasks && f.tasks.length > 0
                   const isAssigned = !!findingToTaskMap[f.id]
-                  const isConfirmed = f.status === "confirmed" || hasTask || isAssigned
-                  console.log("Finding eval:", { id: f.id, factor: f.check_factor, status: f.status, hasTask, isAssigned, isConfirmed })
+                  const isConfirmed =
+                    f.status === "confirmed" || hasTask || isAssigned
+                  console.log("Finding eval:", {
+                    id: f.id,
+                    factor: f.check_factor,
+                    status: f.status,
+                    hasTask,
+                    isAssigned,
+                    isConfirmed,
+                  })
                   return isConfirmed
                 }).length
                 const falsePositives = runGeneralFindings.filter(

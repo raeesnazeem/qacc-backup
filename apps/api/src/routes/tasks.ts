@@ -279,7 +279,8 @@ router.get("/", clerkAuth, async (req: Request, res: Response) => {
         creator:created_by (id, full_name, email),
         projects:project_id (id, name, org_id),
         comments(id),
-        rebuttals(id)
+        rebuttals(id),
+        findings(run_id)
       `,
       { count: "exact" },
     )
@@ -371,7 +372,8 @@ router.get("/:id", clerkAuth, async (req: Request, res: Response) => {
         rebuttals (
           *,
           users:submitted_by (full_name, email)
-        )
+        ),
+        findings(run_id)
       `,
       )
       .eq("id", id)
@@ -903,7 +905,7 @@ router.delete(
   async (req: Request, res: Response) => {
     const { id } = req.params
     const { clerkUserId } = req.auth!
-    
+
     // Fetch task metadata before deletion for logging and reset
     const [performerRes, taskRes] = await Promise.all([
       supabase
@@ -920,7 +922,6 @@ router.delete(
 
     // Log Task Deletion
     try {
-
       if (taskRes.data) {
         await activityService.logActivity(
           {
@@ -946,7 +947,7 @@ router.delete(
       const { error } = await supabase.from("tasks").delete().eq("id", id)
 
       if (error) throw error
-      
+
       // Reset finding status if it was linked to this task
       if (taskRes.data?.finding_id) {
         const findingIds = taskRes.data.finding_id.split(",")
@@ -954,12 +955,12 @@ router.delete(
           .from("findings")
           .update({ status: "open" })
           .in("id", findingIds)
-          
+
         if (updateError) {
           logger.error(updateError, "Failed to reset finding status")
         }
       }
-      
+
       await broadcastTaskUpdate(id, { id, deleted: true })
       return res.status(204).send()
     } catch (error: any) {
@@ -990,7 +991,10 @@ router.post(
           .select("id, full_name")
           .eq("clerk_user_id", clerkUserId)
           .single(),
-        supabase.from("tasks").select("id, title, project_id, finding_id").in("id", ids),
+        supabase
+          .from("tasks")
+          .select("id, title, project_id, finding_id")
+          .in("id", ids),
       ])
 
       const { error } = await supabase.from("tasks").delete().in("id", ids)
@@ -998,19 +1002,23 @@ router.post(
       if (error) throw error
 
       // Reset finding statuses for all linked findings
-      const findingIdsToReset = tasksRes.data
-        ?.map(t => t.finding_id)
-        .filter(Boolean)
-        .flatMap(idStr => idStr!.split(",")) || []
-        
+      const findingIdsToReset =
+        tasksRes.data
+          ?.map((t) => t.finding_id)
+          .filter(Boolean)
+          .flatMap((idStr) => idStr!.split(",")) || []
+
       if (findingIdsToReset.length > 0) {
         const { error: updateError } = await supabase
           .from("findings")
           .update({ status: "open" })
           .in("id", findingIdsToReset)
-          
+
         if (updateError) {
-          logger.error(updateError, "Failed to reset finding statuses in bulk delete")
+          logger.error(
+            updateError,
+            "Failed to reset finding statuses in bulk delete",
+          )
         }
       }
 

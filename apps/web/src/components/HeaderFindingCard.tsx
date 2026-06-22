@@ -84,6 +84,7 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
   const hasTask = finding.tasks && finding.tasks.length > 0
   const isConfirmed = finding.status === "confirmed"
   const isFalsePositive = finding.status === "false_positive"
+  const isLocked = hasTask || isAssigned || isPushed
 
   const handlePushToBasecamp = async () => {
     setIsPushing(true)
@@ -227,7 +228,7 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
             findingId={finding.id}
             pageId={finding.page_id}
             currentSeverity={finding.severity}
-            canEdit={!isFalsePositive}
+            canEdit={!isFalsePositive && !isLocked}
             symbolOnly={true}
           />
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
@@ -240,8 +241,9 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
       <div className="relative group/input">
         <input
           value={localTitle}
+          readOnly={isLocked}
           onChange={(e) => setLocalTitle(e.target.value)}
-          className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
+          className={`w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isLocked ? "pointer-events-none" : ""}`}
           placeholder="Input for Heading to be entered by Admin / QA"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/input:opacity-100 transition-opacity">
@@ -284,10 +286,12 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isSocialVerified}
-                    onChange={(e) => setIsSocialVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsSocialVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 transition-colors cursor-pointer truncate">
                     {isSocialVerified
@@ -298,10 +302,12 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isMobileVerified}
-                    onChange={(e) => setIsMobileVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsMobileVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 transition-colors cursor-pointer truncate">
                     {isMobileVerified
@@ -312,10 +318,12 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isEmailVerified}
-                    onChange={(e) => setIsEmailVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsEmailVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 transition-colors cursor-pointer truncate">
                     {isEmailVerified ? "Email ID Verified" : "Verify Email ID"}
@@ -324,10 +332,12 @@ export const HeaderFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isStickyVerified}
-                    onChange={(e) => setIsStickyVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsStickyVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 transition-colors cursor-pointer truncate">
                     {isStickyVerified

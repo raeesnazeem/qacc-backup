@@ -189,7 +189,7 @@ export const LogoOnChatbotFindingCard: React.FC<FindingCardProps> = ({
           findingId={finding.id}
           pageId={finding.page_id}
           currentSeverity={finding.severity}
-          canEdit={!isFalsePositive}
+          canEdit={!isFalsePositive && !isLocked}
           symbolOnly={true}
         />
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
@@ -201,8 +201,9 @@ export const LogoOnChatbotFindingCard: React.FC<FindingCardProps> = ({
       <div className="relative group/input">
         <input
           value={localTitle}
+          readOnly={isLocked}
           onChange={(e) => setLocalTitle(e.target.value)}
-          className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:outline-none"
+          className={`w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:outline-none ${isLocked ? "pointer-events-none" : ""}`}
           placeholder="Input Heading..."
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/input:opacity-100">
@@ -235,10 +236,12 @@ export const LogoOnChatbotFindingCard: React.FC<FindingCardProps> = ({
               <label className="flex items-center gap-2 group/cb cursor-pointer">
                 <input
                   type="checkbox"
-                  disabled={isPushed}
                   checked={isLogoVerified}
-                  onChange={(e) => setIsLogoVerified(e.target.checked)}
-                  className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent disabled:opacity-60"
+                  onChange={(e) => {
+                    if (isLocked) return
+                    setIsLogoVerified(e.target.checked)
+                  }}
+                  className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent transition-all"
                 />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors">
                   Verify Logo on Chatbot

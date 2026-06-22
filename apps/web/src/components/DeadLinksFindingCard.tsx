@@ -87,6 +87,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
 
   const [localTitle, setLocalTitle] = React.useState(finding.title)
   const [isContextModalOpen, setIsContextModalOpen] = React.useState(false)
+  const [isModalOpen, setIsModalOpen] = React.useState(false)
   const [isBrowserOpen, setIsBrowserOpen] = React.useState(false)
   const { galleryImages: allGalleryImages, addImage } = useGalleryStore()
   const galleryImages = allGalleryImages[finding.id] || []
@@ -111,6 +112,30 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
   const hasTask = finding.tasks && finding.tasks.length > 0
   const isConfirmed = finding.status === "confirmed"
   const isFalsePositive = finding.status === "false_positive"
+  const isLocked = hasTask || isAssigned || isPushed
+
+  const links = React.useMemo(() => {
+    if (!finding.description) return []
+    try {
+      // 1. Try to parse as JSON first
+      return JSON.parse(finding.description)
+    } catch (e) {
+      // 2. If it's not JSON, extract columns from the Markdown text format
+      const regex =
+        /- \*\*(.*?)\*\*\s*\* Reason:\s*(.*?)\s*\* Link Text:\s*(.*?)\s*\* Found on:\s*(.*?)(?=\s+- \*\*|$)/gs
+      let match
+      const extracted = []
+      while ((match = regex.exec(finding.description)) !== null) {
+        extracted.push({
+          url: match[1].trim(),
+          reason: match[2].trim(),
+          link_text: match[3].trim(),
+          found_on: match[4].trim(),
+        })
+      }
+      return extracted
+    }
+  }, [finding.description])
 
   const handlePushToBasecamp = async () => {
     setIsPushing(true)
@@ -148,7 +173,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
           status: "pending",
         })
         if (onConfirm) {
-           onConfirm(finding.id)
+          onConfirm(finding.id)
         }
       } catch (e) {
         console.error("Failed to clear state from DB", e)
@@ -294,32 +319,11 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                 {(() => {
                   if (!finding.description) return null
 
-                  try {
-                    let links: any[] = []
-
-                    try {
-                      // 1. Try to parse as JSON first
-                      links = JSON.parse(finding.description)
-                    } catch (e) {
-                      // 2. If it's not JSON, extract columns from the Markdown text format
-                      const regex =
-                        /- \*\*(.*?)\*\*\s*\* Reason:\s*(.*?)\s*\* Link Text:\s*(.*?)\s*\* Found on:\s*(.*?)(?=\s+- \*\*|$)/gs
-
-                      let match
-                      while (
-                        (match = regex.exec(finding.description)) !== null
-                      ) {
-                        links.push({
-                          url: match[1].trim(),
-                          reason: match[2].trim(),
-                          link_text: match[3].trim(),
-                          found_on: match[4].trim(),
-                        })
-                      }
-                    }
-
-                    if (Array.isArray(links) && links.length > 0) {
-                      return (
+                  if (Array.isArray(links) && links.length > 0) {
+                    const displayLinks = links.slice(0, 3)
+                    const hasMore = links.length > 3
+                    return (
+                      <div className="flex flex-col gap-2">
                         <div className="overflow-x-auto overflow-y-auto max-h-[140px] border border-slate-200 rounded-md my-2 relative [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent">
                           <table className="w-full text-[10px] text-left">
                             <thead className="bg-slate-50 dark:bg-[#131d22] text-slate-500 dark:text-slate-400 sticky top-0 z-10 shadow-[0_1px_0_0_#e2e8f0] dark:shadow-[0_1px_0_0_#334155]">
@@ -339,7 +343,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-600 dark:text-slate-300">
-                              {links.map((link: any, idx: number) => (
+                              {displayLinks.map((link: any, idx: number) => (
                                 <tr
                                   key={idx}
                                   className="hover:bg-slate-50/50 dark:hover:bg-[#1d2a31]"
@@ -377,9 +381,18 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                             </tbody>
                           </table>
                         </div>
-                      )
-                    }
-                  } catch (e) {}
+                        {hasMore && (
+                          <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex items-center text-accent hover:underline text-[10px] font-bold uppercase tracking-widest"
+                          >
+                            <Globe className="w-3 h-3 mr-2" />
+                            View all {links.length} dead links
+                          </button>
+                        )}
+                      </div>
+                    )
+                  }
 
                   // Ultimate fallback to raw text if no links could be extracted
                   return (
@@ -520,7 +533,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
             findingId={finding.id}
             pageId={finding.page_id}
             currentSeverity={finding.severity}
-            canEdit={!isFalsePositive}
+            canEdit={!isFalsePositive && !isLocked}
             symbolOnly={true}
           />
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
@@ -535,8 +548,9 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
       <div className="relative group/input">
         <input
           value={localTitle}
+          readOnly={isLocked}
           onChange={(e) => setLocalTitle(e.target.value)}
-          className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
+          className={`w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isLocked ? "pointer-events-none" : ""}`}
           placeholder="Input for Heading to be entered by Admin / QA"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/input:opacity-100 transition-opacity">
@@ -569,30 +583,11 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
             {(() => {
               if (!finding.description) return null
 
-              try {
-                let links: any[] = []
-
-                try {
-                  // 1. Try to parse as JSON first
-                  links = JSON.parse(finding.description)
-                } catch (e) {
-                  // 2. If it's not JSON, extract columns from the Markdown text format
-                  const regex =
-                    /- \*\*(.*?)\*\*\s*\* Reason:\s*(.*?)\s*\* Link Text:\s*(.*?)\s*\* Found on:\s*(.*?)(?=\s+- \*\*|$)/gs
-
-                  let match
-                  while ((match = regex.exec(finding.description)) !== null) {
-                    links.push({
-                      url: match[1].trim(),
-                      reason: match[2].trim(),
-                      link_text: match[3].trim(),
-                      found_on: match[4].trim(),
-                    })
-                  }
-                }
-
-                if (Array.isArray(links) && links.length > 0) {
-                  return (
+              if (Array.isArray(links) && links.length > 0) {
+                const displayLinks = links.slice(0, 3)
+                const hasMore = links.length > 3
+                return (
+                  <div className="flex flex-col gap-2">
                     <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-md my-2">
                       <table className="w-full text-[10px] text-left">
                         <thead className="bg-slate-50 dark:bg-[#131d22] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
@@ -612,7 +607,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-600 dark:text-slate-300">
-                          {links.map((link: any, idx: number) => (
+                          {displayLinks.map((link: any, idx: number) => (
                             <tr
                               key={idx}
                               className="hover:bg-slate-50/50 dark:hover:bg-[#1d2a31]"
@@ -650,9 +645,18 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                         </tbody>
                       </table>
                     </div>
-                  )
-                }
-              } catch (e) {}
+                    {hasMore && (
+                      <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center text-accent hover:underline text-[10px] font-bold uppercase tracking-widest"
+                      >
+                        <Globe className="w-3 h-3 mr-2" />
+                        View all {links.length} dead links
+                      </button>
+                    )}
+                  </div>
+                )
+              }
 
               // Ultimate fallback to raw text if no links could be extracted
               return (
@@ -674,107 +678,98 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
               )
             })()}
           </div>
-
-          <div className="pt-2 flex flex-col items-start gap-3">
-            <button
-              onClick={() => setIsContextModalOpen(true)}
-              className="text-[9px] font-bold text-slate-500 uppercase tracking-widest hover:text-accent transition-colors text-left"
-            >
-              Click to open contextual data
-            </button>
-          </div>
         </div>
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
         <div className="flex items-center gap-2">
-        {!(hasTask || isAssigned) && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (isPushed && commentUrl) {
-                  window.open(commentUrl, "_blank", "noopener,noreferrer")
-                } else if (!isPushed) {
-                  handlePushToBasecamp()
-                }
-              }}
-              disabled={isPushing}
-              title={isPushed ? "View in Basecamp" : "Push to Basecamp"}
-              className={`btn-unified px-3 flex items-center justify-center transition-all whitespace-nowrap active:scale-95 ${
-                isPushed
-                  ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-200 cursor-pointer animate-fade-in"
-                  : "bg-[#0b1016] hover:bg-slate-800 text-white"
-              }`}
-            >
-              {isPushing ? (
-                <span className="text-[11px] font-bold px-1">...</span>
-              ) : isPushed ? (
-                <>
-                  <span className="text-slate">Success </span>
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 35 30"
-                    fill="currentColor"
-                    className="pl-1"
-                  >
-                    <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
-                  </svg>
-                </>
-              ) : (
-                <>
-                  <span className="text-white">Push to </span>
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 35 30"
-                    fill="currentColor"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="pl-1"
-                  >
-                    <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
-                  </svg>
-                </>
-              )}
-            </button>
-
-            {isPushed && (
+          {!(hasTask || isAssigned) && (
+            <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleDeletePush()
+                  if (isPushed && commentUrl) {
+                    window.open(commentUrl, "_blank", "noopener,noreferrer")
+                  } else if (!isPushed) {
+                    handlePushToBasecamp()
+                  }
                 }}
-                disabled={isDeletingPush}
-                className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                title="Delete from Basecamp"
+                disabled={isPushing}
+                title={isPushed ? "View in Basecamp" : "Push to Basecamp"}
+                className={`btn-unified px-3 flex items-center justify-center transition-all whitespace-nowrap active:scale-95 ${
+                  isPushed
+                    ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-200 cursor-pointer animate-fade-in"
+                    : "bg-[#0b1016] hover:bg-slate-800 text-white"
+                }`}
               >
-                {isDeletingPush ? (
-                  <span className="text-[10px] uppercase font-bold animate-pulse">
-                    ...
-                  </span>
+                {isPushing ? (
+                  <span className="text-[11px] font-bold px-1">...</span>
+                ) : isPushed ? (
+                  <>
+                    <span className="text-slate">Success </span>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 35 30"
+                      fill="currentColor"
+                      className="pl-1"
+                    >
+                      <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                    </svg>
+                  </>
                 ) : (
-                  <div className="flex items-center justify-center gap-1 text-slate-600 dark:text-slate-200 hover:text-red-500 dark:hover:text-red-500 transition-colors">
-                    <span className="text-[8px] font-semibold">
-                      Remove from{""}
-                    </span>
-                    <span>
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 35 30"
-                        fill="currentColor"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
-                      </svg>
-                    </span>
-                  </div>
+                  <>
+                    <span className="text-white">Push to </span>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 35 30"
+                      fill="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="pl-1"
+                    >
+                      <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                    </svg>
+                  </>
                 )}
               </button>
-            )}
-          </div>
-        )}
+
+              {isPushed && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeletePush()
+                  }}
+                  disabled={isDeletingPush}
+                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                  title="Delete from Basecamp"
+                >
+                  {isDeletingPush ? (
+                    <span className="text-[10px] uppercase font-bold animate-pulse">
+                      ...
+                    </span>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1 text-slate-600 dark:text-slate-200 hover:text-red-500 dark:hover:text-red-500 transition-colors">
+                      <span className="text-[8px] font-semibold">
+                        Remove from{""}
+                      </span>
+                      <span>
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 35 30"
+                          fill="currentColor"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path d="M18.088.27c9.1 0 15.215 10.518 15.977 21.937.02.313-.053.626-.212.896-3.14 5.35-10.061 6.527-15.737 6.558-5.487.1-10.7-2.188-14.412-6.301a1.566 1.566 0 0 1-.303-1.6 36.177 36.177 0 0 1 1.912-4.147c1.052-1.928 2.644-4.681 5.154-4.763 2.343 0 3.516 2.174 5.114 3.519 1.633-1.672 2.552-3.94 3.567-6.014a1.565 1.565 0 0 1 2.837 1.326c-.885 1.829-1.814 3.651-2.954 5.336-1.172 1.732-2.073 2.636-3.33 2.636-.746 0-1.385-.292-2.03-.801-1.103-.92-1.937-2.088-3.15-2.873-1.567.785-2.99 4.079-3.824 5.98 2.925 2.88 6.898 4.55 11.008 4.573 4.622-.028 10.286-.49 13.197-4.62-.575-7.111-4.013-18.377-12.814-18.51-7.097 0-11.754 5.047-14.775 13.644A1.565 1.565 0 1 1 .36 16.008C3.771 6.299 9.333.27 18.088.27Z"></path>
+                        </svg>
+                      </span>
+                    </div>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
           {isFalsePositive ? (
             <button
               onClick={() => onConfirm?.(finding.id)}
@@ -870,6 +865,97 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
           </div>
         )}
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 dark:bg-[#131d22]/80 backdrop-blur-sm transition-opacity duration-200">
+          <div
+            className="absolute inset-0 bg-transparent"
+            onClick={() => setIsModalOpen(false)}
+          />
+          <div className="relative w-full max-w-5xl bg-slate-50 dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md shadow-2xl overflow-hidden transition-all duration-200 flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-[#1d2a31] flex-shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-accent/10 dark:bg-accent/20 rounded-md text-accent">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  All Dead Links
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1d2a31] transition-all"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-0 overflow-y-auto flex-1">
+              <table className="w-full text-[10px] text-left">
+                <thead className="bg-slate-100 dark:bg-[#131d22] sticky top-0 shadow-sm z-10 border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest w-12 text-center">
+                      #
+                    </th>
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                      URL
+                    </th>
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                      Reason
+                    </th>
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                      Link Text
+                    </th>
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                      Found On
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-600 dark:text-slate-300">
+                  {links.map((link: any, idx: number) => (
+                    <tr
+                      key={idx}
+                      className="hover:bg-slate-50/50 dark:hover:bg-[#131d22] transition-colors"
+                    >
+                      <td className="px-4 py-3 text-center text-slate-400 dark:text-slate-500 font-bold">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-3 break-all text-blue-500 min-w-[200px]">
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline"
+                        >
+                          {link.url}
+                        </a>
+                      </td>
+                      <td className="px-4 py-3 min-w-[150px]">{link.reason}</td>
+                      <td className="px-4 py-3 font-medium">
+                        {link["Link text"] || link.link_text}
+                      </td>
+                      <td className="px-4 py-3 break-all text-blue-500 min-w-[200px]">
+                        {link.found_on ? (
+                          <a
+                            href={link.found_on}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:underline"
+                          >
+                            {link.found_on}
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isContextModalOpen && (
         <div

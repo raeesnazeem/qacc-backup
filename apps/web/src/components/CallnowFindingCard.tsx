@@ -242,7 +242,7 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
             findingId={finding.id}
             pageId={finding.page_id}
             currentSeverity={finding.severity}
-            canEdit={!isFalsePositive}
+            canEdit={!isFalsePositive && !isLocked}
             symbolOnly={true}
           />
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
@@ -255,8 +255,9 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
       <div className="relative group/input">
         <input
           value={localTitle}
+          readOnly={isLocked}
           onChange={(e) => setLocalTitle(e.target.value)}
-          className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
+          className={`w-full px-4 py-3.5 bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-slate-600 rounded-md font-bold text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isLocked ? "pointer-events-none" : ""}`}
           placeholder="Input for Heading to be entered by Admin / QA"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/input:opacity-100 transition-opacity">
@@ -300,10 +301,12 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isInstalledVerified}
-                    onChange={(e) => setIsInstalledVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsInstalledVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     Call Now Installed
@@ -312,10 +315,12 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isNumberVerified}
-                    onChange={(e) => setIsNumberVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsNumberVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     Number Added
@@ -324,10 +329,12 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isMobileVerified}
-                    onChange={(e) => setIsMobileVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsMobileVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     Visible in Mobile
@@ -336,10 +343,12 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isValidPhoneVerified}
-                    onChange={(e) => setIsValidPhoneVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsValidPhoneVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     Valid Phone
@@ -348,10 +357,12 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isValidEmailVerified}
-                    onChange={(e) => setIsValidEmailVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsValidEmailVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     Valid Email
@@ -360,10 +371,12 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                 <label className="flex items-center gap-2 group/cb">
                   <input
                     type="checkbox"
-                    disabled={isPushed}
                     checked={isLinksVerified}
-                    onChange={(e) => setIsLinksVerified(e.target.checked)}
-                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                    onChange={(e) => {
+                      if (isLocked) return
+                      setIsLinksVerified(e.target.checked)
+                    }}
+                    className="w-3 h-3 text-accent border-slate-300 dark:border-slate-600 dark:bg-[#131d22] rounded focus:ring-accent accent-accent cursor-pointer transition-all"
                   />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest group-hover/cb:text-slate-900 dark:group-hover/cb:text-slate-200 transition-colors cursor-pointer">
                     All Links Functional

@@ -56,14 +56,21 @@ export const TasksTab = ({ project }: TasksTabProps) => {
     limit: 1000,
   })
 
-  const tasks = (tasksData?.data || []).filter(
-    (task: any) => !task.title?.includes("[Feedback]"),
-  )
+  const [searchParams, setSearchParams] = useSearchParams()
+  const taskIdParam = searchParams.get("taskId")
+  const runIdParam = searchParams.get("runId")
+
+  const tasks = (tasksData?.data || []).filter((task: any) => {
+    const isNotFeedback = !task.title?.includes("[Feedback]")
+    const matchesRun = runIdParam
+      ? task.run_id === runIdParam || task.findings?.run_id === runIdParam
+      : true
+    return isNotFeedback && matchesRun
+  })
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const taskIdParam = searchParams.get("taskId")
 
   useEffect(() => {
     if (taskIdParam && tasks.length > 0) {
