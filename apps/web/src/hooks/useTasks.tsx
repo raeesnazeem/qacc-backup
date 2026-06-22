@@ -45,6 +45,8 @@ export const useCreateTask = () => {
     mutationFn: (data: CreateTaskInput) => createTask(axios, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['findings'] });
+      queryClient.invalidateQueries({ queryKey: ['run-findings'] });
       toast.success('Task created successfully');
     },
     onError: (error: any) => {
@@ -63,6 +65,8 @@ export const useUpdateTask = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['findings'] });
+      queryClient.invalidateQueries({ queryKey: ['run-findings'] });
       toast.success('Task updated successfully');
     },
     onError: (error: any) => {
@@ -115,6 +119,8 @@ export const useAssignTask = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['findings'] });
+      queryClient.invalidateQueries({ queryKey: ['run-findings'] });
       toast.success('Task reassigned');
     },
     onError: (error: any) => {
@@ -217,6 +223,8 @@ export const useDeleteTask = () => {
     mutationFn: (id: string) => deleteTask(axios, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['findings'] });
+      queryClient.invalidateQueries({ queryKey: ['run-findings'] });
       toast.success('Task deleted');
     },
     onError: (error: any) => {
@@ -233,6 +241,8 @@ export const useBulkDeleteTasks = () => {
     mutationFn: (ids: string[]) => bulkDeleteTasks(axios, ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['findings'] });
+      queryClient.invalidateQueries({ queryKey: ['run-findings'] });
       toast.success('Tasks deleted');
     },
     onError: (error: any) => {

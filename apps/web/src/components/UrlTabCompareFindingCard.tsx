@@ -256,7 +256,7 @@ export const UrlTabCompareFindingCard: React.FC<FindingCardProps> = ({
   }
 
   const cardBorder =
-    isConfirmed || isAssigned
+    isLocked || isConfirmed || isAssigned
       ? "border-emerald-500 ring-1 ring-emerald-500/20"
       : isFalsePositive
         ? "opacity-60 border-slate-200 dark:border-slate-800"

@@ -360,7 +360,7 @@ export const RunDetailPage = () => {
       ? computedAverageProgress
       : Math.min(99, Math.max(1, Math.round(displayProgress)))
 
-  const { data: tasksData } = useTasks({ projectId: projectId! })
+  const { data: tasksData } = useTasks({ projectId: projectId!, limit: 1000 })
   const updateFindingMutation = useUpdateFinding(selectedPageId)
   const { mutate: createTask } = useCreateTask()
 
@@ -900,6 +900,7 @@ export const RunDetailPage = () => {
       ),
     )
     queryClient.invalidateQueries({ queryKey: ["run-findings", runId] })
+    queryClient.invalidateQueries({ queryKey: ["findings"] })
   }
 
   const handleFalsePositiveFinding = async (id: string) => {
@@ -913,6 +914,7 @@ export const RunDetailPage = () => {
       ),
     )
     queryClient.invalidateQueries({ queryKey: ["run-findings", runId] })
+    queryClient.invalidateQueries({ queryKey: ["findings"] })
   }
 
   const handleCreateTaskForFinding = (finding: QAFinding) => {
@@ -1819,15 +1821,17 @@ export const RunDetailPage = () => {
             <div className="bg-slate-50 dark:bg-[#1D2A31] border-b border-slate-200 dark:border-slate-600 p-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
               {(() => {
                 const total = runGeneralFindings.length
-                const confirmed = runGeneralFindings.filter(
-                  (f) => f.status === "confirmed",
-                ).length
+                const confirmed = runGeneralFindings.filter((f) => {
+                  const hasTask = f.tasks && f.tasks.length > 0
+                  const isAssigned = !!findingToTaskMap[f.id]
+                  const isConfirmed = f.status === "confirmed" || hasTask || isAssigned
+                  console.log("Finding eval:", { id: f.id, factor: f.check_factor, status: f.status, hasTask, isAssigned, isConfirmed })
+                  return isConfirmed
+                }).length
                 const falsePositives = runGeneralFindings.filter(
                   (f) => f.status === "false_positive",
                 ).length
-                const open = runGeneralFindings.filter(
-                  (f) => f.status === "open",
-                ).length
+                const open = total - confirmed - falsePositives
                 const resolved = confirmed + falsePositives
                 const critical = runGeneralFindings.filter(
                   (f) => f.severity === "critical",

@@ -85,6 +85,27 @@ export const PaidMediaFindingCard: React.FC<FindingCardProps> = ({
     setLocalTitle(finding.title)
   }, [finding.title])
 
+  const currentAssigneesForUI =
+    finding.tasks?.flatMap((t: any) =>
+      t.users ? (Array.isArray(t.users) ? t.users : [t.users]) : [],
+    ) || []
+  const allAssigneesListForUI = [...currentAssigneesForUI, ...assignedUsers]
+    .flatMap((u: any) => (Array.isArray(u) ? u : [u]))
+    .filter(
+      (v, i, a) =>
+        a.findIndex((t: any) => {
+          const tId = String(t.userId || t.user_id || t.id || "t_" + i)
+          const vId = String(v.userId || v.user_id || v.id || "v_" + i)
+          if (tId !== "undefined" && vId !== "undefined" && tId === vId)
+            return true
+          if (t.email && v.email && t.email === v.email) return true
+          const tName = (t.full_name || t.name || "").trim().toLowerCase()
+          const vName = (v.full_name || v.name || "").trim().toLowerCase()
+          if (tName && vName && tName === vName) return true
+          return false
+        }) === i,
+    )
+
   const severityIcons = {
     critical: <ShieldAlert size={20} />,
     high: <AlertTriangle size={20} />,
@@ -264,21 +285,7 @@ export const PaidMediaFindingCard: React.FC<FindingCardProps> = ({
             PAID MEDIA
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
-            {new Date(finding.created_at).toLocaleDateString(undefined, {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
-            {new Date(finding.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
+        <div className="flex flex-col items-end"></div>
       </div>
 
       <div className="relative group/input">
@@ -390,7 +397,7 @@ export const PaidMediaFindingCard: React.FC<FindingCardProps> = ({
                   disabled={hasTask || isAssigned}
                   className={`btn-unified ${
                     hasTask || isAssigned
-                      ? "bg-accent text-white cursor-not-allowed"
+                      ? "bg-accent text-white border-accent cursor-not-allowed"
                       : ""
                   }`}
                 >
@@ -429,13 +436,13 @@ export const PaidMediaFindingCard: React.FC<FindingCardProps> = ({
           )}
         </div>
 
-        {assignedUsers.length > 0 && (
+        {allAssigneesListForUI.length > 0 && (
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
               Assigned
             </span>
             <div className="flex -space-x-1.5 overflow-hidden">
-              {assignedUsers.map((u, idx) => (
+              {allAssigneesListForUI.map((u, idx) => (
                 <div
                   key={u.id || idx}
                   className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#1d2a31] border-2 border-white dark:border-[#1D2A31] flex items-center justify-center text-[8px] font-bold text-slate-500 dark:text-slate-300 relative group/avatar"
@@ -443,12 +450,15 @@ export const PaidMediaFindingCard: React.FC<FindingCardProps> = ({
                   {u.avatar_url ? (
                     <img
                       src={u.avatar_url}
-                      alt={u.full_name || ""}
+                      alt={u.full_name || u.name || ""}
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    u.full_name?.[0] || ""
+                    (u.full_name || u.name)?.[0]?.toUpperCase() || "U"
                   )}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                    {u.full_name || u.name || "Assigned User"}
+                  </div>
                 </div>
               ))}
             </div>

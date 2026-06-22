@@ -132,13 +132,50 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
       })
     }
     const total = allUniqueFindings.length
-    const confirmed = allUniqueFindings.filter(
-      (f) => f.status === "confirmed",
-    ).length
-    const falsePositives = allUniqueFindings.filter(
-      (f) => f.status === "false_positive",
-    ).length
-    const open = allUniqueFindings.filter((f) => f.status === "open").length
+    
+    // Group findings by check_factor to apply status to all members of a group
+    const checkFactorGroups: Record<string, typeof allUniqueFindings> = {}
+    allUniqueFindings.forEach(f => {
+      if (!checkFactorGroups[f.check_factor]) {
+        checkFactorGroups[f.check_factor] = []
+      }
+      checkFactorGroups[f.check_factor].push(f)
+    })
+
+    const GENERAL_CHECK_FACTORS = [
+      "project_plan", "paid_media", "privacy_policy", "callnow_links", 
+      "hero_media", "footer_logo", "single_script", "top_bar_sticky", 
+      "favicon", "contact_form", "chatbot_consultation", "text_share", 
+      "dead_links", "learn_more_buttons", "url_tab_compare", 
+      "verify_plugin_updates", "social_share_heading", "logo_chatbot"
+    ]
+
+    const confirmed = allUniqueFindings.filter((f) => {
+      const isGeneral = GENERAL_CHECK_FACTORS.includes(f.check_factor)
+      if (isGeneral) {
+        const group = checkFactorGroups[f.check_factor]
+        return group.some(g => {
+          const hasTask = g.tasks && g.tasks.length > 0
+          const isAssigned = !!findingToTaskMap[g.id]
+          return g.status === "confirmed" || hasTask || isAssigned
+        })
+      }
+
+      const hasTask = f.tasks && f.tasks.length > 0
+      const isAssigned = !!findingToTaskMap[f.id]
+      return f.status === "confirmed" || hasTask || isAssigned
+    }).length
+    
+    const falsePositives = allUniqueFindings.filter((f) => {
+      const isGeneral = GENERAL_CHECK_FACTORS.includes(f.check_factor)
+      if (isGeneral) {
+        const group = checkFactorGroups[f.check_factor]
+        return group.some(g => g.status === "false_positive")
+      }
+      return f.status === "false_positive"
+    }).length
+    
+    const open = total - confirmed - falsePositives
     const resolved = confirmed + falsePositives
     return {
       open,
@@ -152,7 +189,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
       total,
       resolvedPercentage: total > 0 ? Math.round((resolved / total) * 100) : 0,
     }
-  }, [findings, generalFindings])
+  }, [findings, generalFindings, findingToTaskMap])
 
   // Filtered Findings
   const filteredFindings = useMemo(() => {

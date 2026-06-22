@@ -74,6 +74,7 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
   const hasTask = finding.tasks && finding.tasks.length > 0
   const isConfirmed = finding.status === "confirmed"
   const isFalsePositive = finding.status === "false_positive"
+  const isLocked = hasTask || isAssigned || isPushed
 
   const handlePushToBasecamp = async () => {
     setIsPushing(true)
@@ -118,6 +119,27 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
     setLocalTitle(finding.title)
   }, [finding.title])
 
+  const currentAssigneesForUI =
+    finding.tasks?.flatMap((t: any) =>
+      t.users ? (Array.isArray(t.users) ? t.users : [t.users]) : [],
+    ) || []
+  const allAssigneesListForUI = [...currentAssigneesForUI, ...assignedUsers]
+    .flatMap((u: any) => (Array.isArray(u) ? u : [u]))
+    .filter(
+      (v, i, a) =>
+        a.findIndex((t: any) => {
+          const tId = String(t.userId || t.user_id || t.id || "t_" + i)
+          const vId = String(v.userId || v.user_id || v.id || "v_" + i)
+          if (tId !== "undefined" && vId !== "undefined" && tId === vId)
+            return true
+          if (t.email && v.email && t.email === v.email) return true
+          const tName = (t.full_name || t.name || "").trim().toLowerCase()
+          const vName = (v.full_name || v.name || "").trim().toLowerCase()
+          if (tName && vName && tName === vName) return true
+          return false
+        }) === i,
+    )
+
   if (!canAction) return null
 
   const screenshotUrls = finding.screenshot_url
@@ -137,7 +159,7 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
 
   return (
     <div
-      className={`group p-6 bg-slate-200/10 dark:bg-[#1D2A31] rounded-md border transition-all duration-300 relative overflow-hidden flex flex-col gap-6 ${isConfirmed || isAssigned ? "border-emerald-500 ring-1 ring-emerald-500/20" : isFalsePositive ? "opacity-60 border-slate-200 dark:border-slate-800" : "border-slate-200 dark:border-slate-800 hover:border-accent/40"}`}
+      className={`group p-6 bg-slate-200/10 dark:bg-[#1D2A31] rounded-md border transition-all duration-300 relative overflow-hidden flex flex-col gap-6 ${isLocked ? "border-emerald-500 ring-1 ring-emerald-500/20" : isFalsePositive ? "opacity-60 border-slate-200 dark:border-slate-800" : "border-slate-200 dark:border-slate-800 hover:border-accent/40"}`}
     >
       <div
         className="hidden dark:block absolute inset-0 rounded-md pointer-events-none p-[1px] drop-shadow-sm opacity-50 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden"
@@ -377,7 +399,7 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
                   })
                 }}
                 disabled={hasTask || isAssigned}
-                className={`btn-unified ${hasTask || isAssigned ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-60" : ""}`}
+                className={`btn-unified ${hasTask || isAssigned ? "bg-accent text-white border-accent cursor-not-allowed" : ""}`}
               >
                 {hasTask || isAssigned ? "Task Linked" : "Add to Tasks"}
               </button>
@@ -406,6 +428,34 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
               >
                 <Unlink2 size={16} />
               </button>
+            </div>
+          )}
+          {allAssigneesListForUI.length > 0 && (
+            <div className="ml-2 flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                Assigned
+              </span>
+              <div className="flex -space-x-1.5 overflow-hidden">
+                {allAssigneesListForUI.map((u: any, idx: number) => (
+                  <div
+                    key={u.id || idx}
+                    className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#1d2a31] border-2 border-white dark:border-[#1D2A31] flex items-center justify-center text-[8px] font-bold text-slate-500 dark:text-slate-300 relative group/avatar"
+                  >
+                    {u.avatar_url ? (
+                      <img
+                        src={u.avatar_url}
+                        alt={u.full_name || u.name || ""}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      (u.full_name || u.name)?.[0]?.toUpperCase() || "U"
+                    )}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      {u.full_name || u.name || "Assigned User"}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
