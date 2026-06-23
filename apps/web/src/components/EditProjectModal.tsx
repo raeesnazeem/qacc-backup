@@ -2,7 +2,9 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { UpdateProjectSchema, UpdateProjectInput } from "@qacc/shared"
 import { useUpdateProject } from "../hooks/useProjects"
+import { useRuns } from "../hooks/useRuns"
 import { Project } from "../api/projects.api"
+import { useState, useEffect } from "react"
 import {
   X,
   Loader2,
@@ -12,7 +14,6 @@ import {
   Zap,
   Settings2,
 } from "lucide-react"
-import { useEffect } from "react"
 
 interface EditProjectModalProps {
   project: Project | null
@@ -28,6 +29,9 @@ export const EditProjectModal = ({
   const { mutate: updateProject, isPending } = useUpdateProject(
     project?.id || "",
   )
+  const [showPreReleaseWarning, setShowPreReleaseWarning] = useState(false)
+  const { data: runsData } = useRuns(project?.id || "", 1, 100)
+  const hasSignedOffRun = runsData?.data?.some((run: any) => run.sign_offs && run.sign_offs.length > 0)
 
   const {
     register,
@@ -167,8 +171,8 @@ export const EditProjectModal = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* WooCommerce Toggle */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#1D2A31] rounded-md border border-slate-300 dark:border-slate-800">
+              {/* WooCommerce Toggle - Hidden for now */}
+              {/* <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#1D2A31] rounded-md border border-slate-300 dark:border-slate-800">
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-accent" />
                   <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -183,7 +187,7 @@ export const EditProjectModal = ({
                   />
                   <div className="w-9 h-5 bg-slate-200 dark:bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-50 dark:after:bg-slate-300 after:border-slate-300 dark:after:border-slate-500 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
                 </label>
-              </div>
+              </div> */}
               {/* Pre-release Toggle */}
               <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-900/50">
                 <div className="flex items-center space-x-2">
@@ -193,7 +197,15 @@ export const EditProjectModal = ({
                   </span>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label 
+                  className="relative inline-flex items-center cursor-pointer"
+                  onClick={(e) => {
+                    if (isPreRelease && !hasSignedOffRun) {
+                      e.preventDefault()
+                      setShowPreReleaseWarning(true)
+                    }
+                  }}
+                >
                   <input
                     type="checkbox"
                     {...register("is_pre_release")}
@@ -231,6 +243,35 @@ export const EditProjectModal = ({
           </div>
         </form>
       </div>
+
+      {showPreReleaseWarning && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity duration-200">
+          <div className="absolute inset-0 bg-transparent" onClick={() => setShowPreReleaseWarning(false)} />
+          <div className="relative w-full max-w-sm bg-slate-50 dark:bg-[#131d22] border border-slate-200 dark:border-[#1d2a31] rounded-md shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Cannot Enable Post-release</h3>
+              <button
+                onClick={() => setShowPreReleaseWarning(false)}
+                className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1d2a31] transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              This cannot be toggled unless a signed off QA run is available.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowPreReleaseWarning(false)}
+                className="btn-unified"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
