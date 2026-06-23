@@ -64,7 +64,7 @@ export const RunDetailPage = () => {
   const navigate = useNavigate()
   const axios = useAuthAxios()
   const updateStatus = useUpdateRunStatus()
-  const { canDo } = useRole()
+  const { canDo, isAdmin, isQaEngineer } = useRole()
   const aiResultsMap = useAiResultsStore((state) => state.aiResultsMap)
   const { clearAllGalleries, galleryImages: allGalleryImages } =
     useGalleryStore()
@@ -1234,7 +1234,7 @@ export const RunDetailPage = () => {
               <span>Queue Dashboard</span>
             </a> */}
 
-            {run.status === "completed" && (
+            {isAdmin && run.status === "completed" && (
               <button
                 onClick={handleCaptureVideo}
                 disabled={isRecordingVideo}
@@ -1249,16 +1249,18 @@ export const RunDetailPage = () => {
               </button>
             )}
 
-            <a
-              href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/admin/queues`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-unified flex items-center gap-2"
-              title="View BullMQ Dashboard"
-            >
-              <LayoutDashboard size={14} />
-              <span>Queue Dashboard</span>
-            </a>
+            {isAdmin && (
+              <a
+                href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/admin/queues`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-unified flex items-center gap-2"
+                title="View BullMQ Dashboard"
+              >
+                <LayoutDashboard size={14} />
+                <span>Queue Dashboard</span>
+              </a>
+            )}
 
             {run.status === "running" && !isDiscovering && (
               <div className="text-right">
@@ -1404,10 +1406,11 @@ export const RunDetailPage = () => {
           </button>
         )}
       
-        {(isRecordingVideo ||
+        {((isRecordingVideo ||
           (run as any)?.recording_status === "recording" ||
           (run as any)?.recording_status === "completed" ||
-          (run as any)?.recording_video_urls) && (
+          (run as any)?.recording_video_urls) && 
+          (!isQaEngineer || (!project?.is_pre_release && safeDisplayProgress === 100 && allRunTasksClosed))) && (
           <button
             onClick={() => setActiveTab("recordings")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
@@ -2284,7 +2287,7 @@ export const RunDetailPage = () => {
       )}
 
 
-      {activeTab === "recordings" && (
+      {activeTab === "recordings" && (!isQaEngineer || (!project?.is_pre_release && safeDisplayProgress === 100 && allRunTasksClosed)) && (
         <div className="space-y-8 animate-in fade-in duration-200">
           <div className="min-h-[100vh] pt-4">
             <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-700 pb-4 mb-6">
