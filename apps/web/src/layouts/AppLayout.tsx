@@ -32,6 +32,7 @@ import { NotificationBell } from "../components/NotificationBell"
 import { useRealtimeNotifications } from "../hooks/useRealtimeNotifications"
 import { useWorkspaceUsers } from "../hooks/useProjects"
 import { useAppStore } from "../store/appStore"
+import { ActiveUsersDropdown } from "../components/ActiveUsersDropdown"
 
 export const AppLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -385,6 +386,8 @@ export const AppLayout = () => {
           </div>
 
           <div className="flex items-center space-x-6">
+            <ActiveUsersDropdown />
+            
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
