@@ -23,6 +23,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useRole } from "../hooks/useRole"
 
 interface StartRunModalProps {
   project: Project
@@ -36,6 +37,7 @@ export const StartRunModal = ({
   onClose,
 }: StartRunModalProps) => {
   const navigate = useNavigate()
+  const { role } = useRole()
   const { mutate: createRun, isPending: isCreating } = useCreateRun()
   const { mutate: startRun, isPending: isStarting } = useStartRun()
   const { isPending: isUpdating } = useUpdateRunStatus()
@@ -553,71 +555,73 @@ export const StartRunModal = ({
               </div>
               <div className="space-y-4 max-h-[45vh] bg-transparent overflow-y-auto pr-2 custom-scrollbar">
                 {/* Functional Tests Group */}
-                {/* <details className="group space-y-2" open>
-                  <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:text-accent transition-colors bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
-                    <span className="mr-3 text-[12px] text-slate-400 transition-transform duration-300 -rotate-90 group-open:rotate-0">
-                      ▼
-                    </span>
-                    <span className="flex-1 uppercase tracking-wider text-xs">
-                      Functional Tests
-                    </span>
-                    <div
-                      className="flex items-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={functionalChecks.every((c) =>
-                          enabledChecks.includes(c.id),
-                        )}
-                        onChange={(e) => {
-                          const isChecked = e.target.checked
-                          if (isChecked) {
-                            const newChecks = Array.from(
-                              new Set([
-                                ...enabledChecks,
-                                ...functionalChecks.map((c) => c.id),
-                              ]),
-                            )
-                            setValue("enabled_checks", newChecks)
-                          } else {
-                            const newChecks = enabledChecks.filter(
-                              (id) =>
-                                !functionalChecks.find((c) => c.id === id),
-                            )
-                            setValue("enabled_checks", newChecks)
-                          }
-                        }}
-                        className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
-                      />
-                    </div>
-                  </summary>
-                  <div className="space-y-2 pt-1 pl-4">
-                    {functionalChecks.map((check) => (
-                      <label
-                        key={check.id}
-                        className="flex items-start p-3 border border-slate-100 dark:border-slate-700 rounded-md bg-slate-50/50 dark:bg-[#1d2a31]/30 hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
+                {role === "super_admin" && (
+                  <details className="group space-y-2" open>
+                    <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:text-accent transition-colors bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
+                      <span className="mr-3 text-[12px] text-slate-400 transition-transform duration-300 -rotate-90 group-open:rotate-0">
+                        ▼
+                      </span>
+                      <span className="flex-1 uppercase tracking-wider text-xs">
+                        Functional Tests
+                      </span>
+                      <div
+                        className="flex items-center"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center h-5 mr-3">
-                          <input
-                            type="checkbox"
-                            {...register("enabled_checks")}
-                            value={check.id}
-                            className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
-                          />
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider">
-                            {check.label}
+                        <input
+                          type="checkbox"
+                          checked={functionalChecks.every((c) =>
+                            enabledChecks.includes(c.id),
+                          )}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked
+                            if (isChecked) {
+                              const newChecks = Array.from(
+                                new Set([
+                                  ...enabledChecks,
+                                  ...functionalChecks.map((c) => c.id),
+                                ]),
+                              )
+                              setValue("enabled_checks", newChecks)
+                            } else {
+                              const newChecks = enabledChecks.filter(
+                                (id) =>
+                                  !functionalChecks.find((c) => c.id === id),
+                              )
+                              setValue("enabled_checks", newChecks)
+                            }
+                          }}
+                          className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
+                        />
+                      </div>
+                    </summary>
+                    <div className="space-y-2 pt-1 pl-4">
+                      {functionalChecks.map((check) => (
+                        <label
+                          key={check.id}
+                          className="flex items-start p-3 border border-slate-100 dark:border-slate-700 rounded-md bg-slate-50/50 dark:bg-[#1d2a31]/30 hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
+                        >
+                          <div className="flex items-center h-5 mr-3">
+                            <input
+                              type="checkbox"
+                              {...register("enabled_checks")}
+                              value={check.id}
+                              className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
+                            />
                           </div>
-                          <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
-                            {check.description}
-                          </p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </details> */}
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider">
+                              {check.label}
+                            </div>
+                            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
+                              {check.description}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                )}
 
                 {/* General Checks Group */}
                 <details className="group space-y-2" open>

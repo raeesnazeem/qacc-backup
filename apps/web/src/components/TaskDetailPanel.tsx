@@ -57,7 +57,10 @@ export const TaskDetailPanel = ({
   )
   const task = latestTask || initialTask
   const { isDeveloper } = useRole()
-  const hasRebuttals = (task?.rebuttals?.length || 0) > 0
+
+  const fullRebuttals = task?.rebuttals?.filter((r: any) => r.created_at) || []
+  const fullComments = task?.comments?.filter((c: any) => c.created_at) || []
+  const hasRebuttals = fullRebuttals.length > 0
 
   const { mutate: updateTask } = useUpdateTask()
   const { mutate: addRebuttal } = useAddRebuttal()
@@ -415,8 +418,8 @@ export const TaskDetailPanel = ({
             <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
               <CommentThread
                 taskId={task.id}
-                comments={task.comments || []}
-                rebuttals={task.rebuttals || []}
+                comments={fullComments}
+                rebuttals={fullRebuttals}
               />
             </div>
 
@@ -440,7 +443,7 @@ export const TaskDetailPanel = ({
 
                   {hasRebuttals && (
                     <div className="space-y-4">
-                      {task.rebuttals?.map((r) => (
+                      {fullRebuttals.map((r: any) => (
                         <div
                           key={r.id}
                           className="bg-slate-50 dark:bg-[#1D2A31] border border-red-100 dark:border-red-900/50 p-3 rounded-lg space-y-2"

@@ -124,11 +124,19 @@ export const TasksTab = ({ project }: TasksTabProps) => {
           const existingCommentIds = new Set(
             group.comments?.map((c: any) => c.id) || [],
           )
-          task.comments.forEach((c: any) => {
-            if (!existingCommentIds.has(c.id)) {
-              group.comments = [...(group.comments || []), c]
-            }
-          })
+          const newComments = task.comments.filter((c: any) => !existingCommentIds.has(c.id))
+          if (newComments.length > 0) {
+            group.comments = [...(group.comments || []), ...newComments]
+          }
+        }
+        if (task.rebuttals && task.rebuttals.length > 0) {
+          const existingRebuttalIds = new Set(
+            group.rebuttals?.map((r: any) => r.id) || [],
+          )
+          const newRebuttals = task.rebuttals.filter((r: any) => !existingRebuttalIds.has(r.id))
+          if (newRebuttals.length > 0) {
+            group.rebuttals = [...(group.rebuttals || []), ...newRebuttals]
+          }
         }
       }
     })

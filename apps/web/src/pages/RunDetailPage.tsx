@@ -712,6 +712,17 @@ export const RunDetailPage = () => {
     return runTasks.map((t: any) => t.id)
   }, [runTasks])
 
+  useEffect(() => {
+    if (activeTab === "report" && !location.state?.reportFixApplied) {
+      navigate(`/projects/${projectId}?tab=runs`, { replace: true })
+      setTimeout(() => {
+        navigate(`/projects/${projectId}/runs/${runId}`, {
+          state: { ...location.state, reportFixApplied: true },
+        })
+      }, 0)
+    }
+  }, [activeTab, location.state, navigate, projectId, runId])
+
   const isLoading = isLoadingRun || isLoadingProject
 
   if (isLoading) {
@@ -1072,18 +1083,6 @@ export const RunDetailPage = () => {
   const isSignOffVisible = isPreRelease
     ? allRunTasksClosed && safeDisplayProgress === 100
     : safeDisplayProgress === 100
-
-  
-  useEffect(() => {
-    if (activeTab === "report" && !location.state?.reportFixApplied) {
-      navigate(`/projects/${projectId}?tab=runs`, { replace: true })
-      setTimeout(() => {
-        navigate(`/projects/${projectId}/runs/${runId}`, {
-          state: { ...location.state, reportFixApplied: true },
-        })
-      }, 0)
-    }
-  }, [activeTab, location.state, navigate, projectId, runId])
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-200">
