@@ -101,7 +101,7 @@ const worker = new Worker(
   },
   {
     connection,
-    concurrency: 15, // Process up to 15 jobs simultaneously
+    concurrency: parseInt(process.env.WORKER_CONCURRENCY || "3", 10), // Reduced from 15 to prevent 100% CPU usage during browser scans
     drainDelay: 60, // Only poll every 60 seconds when the queue is empty
     stalledInterval: 300000, // 5 minutes
   },
