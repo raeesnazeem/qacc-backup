@@ -2261,8 +2261,8 @@ router.post(
 
         await createBasecampComment({
           token: activeBasecampToken,
-          accountId: projectSettings.basecamp_account_id!,
-          projectId: projectSettings.basecamp_project_id!,
+          accountId: projectSettings!.basecamp_account_id!,
+          projectId: projectSettings!.basecamp_project_id!,
           recordingId: todolistId,
           content: basecampComment,
         })
