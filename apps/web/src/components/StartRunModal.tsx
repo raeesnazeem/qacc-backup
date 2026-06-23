@@ -553,7 +553,7 @@ export const StartRunModal = ({
               </div>
               <div className="space-y-4 max-h-[45vh] bg-transparent overflow-y-auto pr-2 custom-scrollbar">
                 {/* Functional Tests Group */}
-                <details className="group space-y-2" open>
+                {/* <details className="group space-y-2" open>
                   <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:text-accent transition-colors bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
                     <span className="mr-3 text-[12px] text-slate-400 transition-transform duration-300 -rotate-90 group-open:rotate-0">
                       ▼
@@ -617,7 +617,7 @@ export const StartRunModal = ({
                       </label>
                     ))}
                   </div>
-                </details>
+                </details> */}
 
                 {/* General Checks Group */}
                 <details className="group space-y-2" open>

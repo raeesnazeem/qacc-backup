@@ -1,4 +1,4 @@
-import { useParams, Link, useLocation } from "react-router-dom"
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom"
 import { useProject } from "../hooks/useProjects"
 import { QAFinding, QAPage } from "../api/runs.api"
 import { useAuthAxios } from "../lib/useAuthAxios"
@@ -17,7 +17,6 @@ import {
 import { useCreateTask, useTasks } from "../hooks/useTasks"
 import { AssignMemberModal } from "../components/AssignMemberModal"
 import { WooCommerceSection } from "../components/WooCommerceSection"
-import { SignOffButton } from "../components/SignOffButton"
 import { TaskStagingOverlay } from "../components/TaskStagingOverlay"
 import { ManualScanOverlay } from "../components/ManualScanOverlay"
 import { useTaskStageStore } from "../store/taskStageStore"
@@ -57,10 +56,12 @@ import { useEffect, useState, useMemo, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import { useAiResultsStore } from "../store/aiResultsStore"
+import { SignOffTab } from "../components/SignOffTab"
 
 export const RunDetailPage = () => {
   const { id: projectId, runId } = useParams<{ id: string; runId: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const axios = useAuthAxios()
   const updateStatus = useUpdateRunStatus()
   const { canDo } = useRole()
@@ -699,6 +700,18 @@ export const RunDetailPage = () => {
       setEta(null)
     }
   }, [displayProgress, run?.status, run?.started_at])
+  const runTasks = useMemo(() => {
+    return tasksData?.data?.filter((task: any) => {
+      const isNotFeedback = !task.title?.includes("[Feedback]")
+      const matchesRun = task.run_id === runId || task.findings?.run_id === runId
+      return isNotFeedback && matchesRun
+    }) || []
+  }, [tasksData?.data, runId])
+
+  const runTaskIds = useMemo(() => {
+    return runTasks.map((t: any) => t.id)
+  }, [runTasks])
+
   const isLoading = isLoadingRun || isLoadingProject
 
   if (isLoading) {
@@ -1047,6 +1060,31 @@ export const RunDetailPage = () => {
       toast.error("Failed to calculate issue numbers")
     }
   }
+
+  const isPreRelease = project?.is_pre_release
+
+
+  const allRunTasksClosed =
+    runTasks.length > 0
+      ? runTasks.every((t: any) => t.status === "closed")
+      : true
+
+  const isSignOffVisible = isPreRelease
+    ? allRunTasksClosed && safeDisplayProgress === 100
+    : safeDisplayProgress === 100
+
+  
+  useEffect(() => {
+    if (activeTab === "report" && !location.state?.reportFixApplied) {
+      navigate(`/projects/${projectId}?tab=runs`, { replace: true })
+      setTimeout(() => {
+        navigate(`/projects/${projectId}/runs/${runId}`, {
+          state: { ...location.state, reportFixApplied: true },
+        })
+      }, 0)
+    }
+  }, [activeTab, location.state, navigate, projectId, runId])
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-200">
       {/* Project Navigation Floating Widget */}
@@ -1103,7 +1141,7 @@ export const RunDetailPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link
-              to={`/projects/${projectId}`}
+              to={activeTab === 'report' ? `/projects/${projectId}?tab=runs` : `/projects/${projectId}`}
               className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-slate-600" />
@@ -1366,17 +1404,7 @@ export const RunDetailPage = () => {
             WooCommerce
           </button>
         )}
-        <button
-          onClick={() => setActiveTab("report")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
-            activeTab === "report"
-              ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
-              : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
-          }`}
-        >
-          <ClipboardList size={14} />
-          Report
-        </button>
+      
         {(isRecordingVideo ||
           (run as any)?.recording_status === "recording" ||
           (run as any)?.recording_status === "completed" ||
@@ -1391,6 +1419,20 @@ export const RunDetailPage = () => {
           >
             <Video size={14} />
             Recordings
+          </button>
+        )}
+
+        {isSignOffVisible && (
+          <button
+            onClick={() => setActiveTab("report")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+              activeTab === "report"
+                ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+            }`}
+          >
+            <ClipboardList size={14} />
+            Sign Off
           </button>
         )}
       </div>
@@ -2238,208 +2280,10 @@ export const RunDetailPage = () => {
         </div>
       )}
 
-      {activeTab === "report" && (
-        <div className="space-y-8 animate-in fade-in duration-200">
-          {/* Report Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 pb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">
-                Executive QA Report
-              </h2>
-              <p className="text-xs text-slate-500 font-medium mt-1">
-                Summary and official sign-off for Run #{runId?.substring(0, 8)}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-900 text-[10px] font-bold uppercase tracking-widest rounded-md hover:bg-slate-200 transition-all border border-slate-200"
-                onClick={() => toast.success("PDF Generation started")}
-              >
-                <Download size={14} />
-                Export PDF
-              </button>
-              {run.status === "completed" && <SignOffButton runId={runId!} />}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column: Stats & Summary */}
-            <div className="lg:col-span-2 space-y-8">
-              <div className="bg-slate-50 dark:bg-[#1D2A31] rounded-md border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="p-8 border-b border-slate-50 dark:border-slate-700">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">
-                    Quality Score
-                  </h3>
-                  <div className="flex items-end gap-4">
-                    <p className="text-6xl font-bold text-slate-900 leading-none">
-                      {Math.max(
-                        0,
-                        100 -
-                          Object.values(run.finding_counts || {}).reduce(
-                            (a, b) => a + b,
-                            0,
-                          ) *
-                            2,
-                      )}
-                      %
-                    </p>
-                    <div className="pb-1">
-                      <p className="text-xs font-bold text-emerald-600 uppercase">
-                        Healthy
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        Based on issue density
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-8 grid grid-cols-2 sm:grid-cols-4 gap-8">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Critical
-                    </p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {run.finding_counts?.critical || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      High
-                    </p>
-                    <p className="text-2xl font-bold text-orange-500">
-                      {run.finding_counts?.high || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Medium
-                    </p>
-                    <p className="text-2xl font-bold text-amber-500">
-                      {run.finding_counts?.medium || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Low
-                    </p>
-                    <p className="text-2xl font-bold text-blue-500">
-                      {run.finding_counts?.low || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 dark:bg-[#1D2A31] rounded-md border border-slate-200 dark:border-slate-700 shadow-sm p-8">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">
-                  Finding Categories
-                </h3>
-                <div className="space-y-4">
-                  {[
-                    {
-                      label: "Visual Consistency",
-                      count:
-                        runFindings?.filter(
-                          (f) => f.check_factor === "visual_diff",
-                        ).length || 0,
-                      color: "bg-blue-500",
-                    },
-                    {
-                      label: "Performance",
-                      count:
-                        runFindings?.filter(
-                          (f) => f.check_factor === "performance",
-                        ).length || 0,
-                      color: "bg-emerald-500",
-                    },
-                    {
-                      label: "Accessibility",
-                      count:
-                        runFindings?.filter(
-                          (f) => f.check_factor === "accessibility",
-                        ).length || 0,
-                      color: "bg-purple-500",
-                    },
-                    {
-                      label: "Console Errors",
-                      count:
-                        runFindings?.filter(
-                          (f) => f.check_factor === "console_error",
-                        ).length || 0,
-                      color: "bg-red-500",
-                    },
-                  ].map((cat, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
-                        <span className="text-slate-600">{cat.label}</span>
-                        <span className="text-slate-900">
-                          {cat.count} Issues
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${cat.color} rounded-full`}
-                          style={{
-                            width: `${Math.min(100, (cat.count / (runFindings?.length || 1)) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Run Info & Actions */}
-            <div className="space-y-8">
-              <div className="bg-slate-900 rounded-md p-8 text-white">
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">
-                  Run Details
-                </h3>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">
-                      Started At
-                    </p>
-                    <p className="text-sm font-bold mt-1">
-                      {run.started_at
-                        ? new Date(run.started_at).toLocaleString()
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">
-                      Completed At
-                    </p>
-                    <p className="text-sm font-bold mt-1">
-                      {run.completed_at
-                        ? new Date(run.completed_at).toLocaleString()
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">
-                      Run Type
-                    </p>
-                    <p className="text-sm font-bold mt-1 uppercase">
-                      {run.run_type.replace("_", " ")}
-                    </p>
-                  </div>
-                  <div className="pt-4 border-t border-white/10">
-                    <button
-                      className="w-full py-3 bg-slate-50/10 hover:bg-slate-50/20 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all border border-white/5 flex items-center justify-center gap-2"
-                      onClick={() => toast.success("Report shared with team")}
-                    >
-                      <Send size={14} />
-                      Share Report
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          {activeTab === "report" && (
+        <SignOffTab run={run} runFindings={runFindings || []} runId={runId!} runTasks={runTasks || []} />
       )}
+
 
       {activeTab === "recordings" && (
         <div className="space-y-8 animate-in fade-in duration-200">

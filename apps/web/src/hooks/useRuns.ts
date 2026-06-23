@@ -6,6 +6,7 @@ import {
   getRuns,
   getRun,
   signOffRun,
+  revokeSignOff,
   startRun,
   updateRunStatus,
   fetchUrls,
@@ -131,8 +132,8 @@ export const useSignOff = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ runId, notes }: { runId: string; notes?: string }) =>
-      signOffRun(axios, runId, notes),
+    mutationFn: ({ runId, notes, notifyUserIds }: { runId: string; notes?: string; notifyUserIds?: string[] }) =>
+      signOffRun(axios, runId, notes, notifyUserIds),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["run", data.run_id] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
@@ -140,6 +141,23 @@ export const useSignOff = () => {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || "Failed to sign off")
+    },
+  })
+}
+
+export const useRevokeSignOff = () => {
+  const axios = useAuthAxios()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ runId }: { runId: string }) => revokeSignOff(axios, runId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["run", variables.runId] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
+      toast.success("Sign-off revoked successfully")
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || "Failed to revoke sign-off")
     },
   })
 }

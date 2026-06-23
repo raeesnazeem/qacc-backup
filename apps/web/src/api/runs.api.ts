@@ -196,8 +196,17 @@ export const signOffRun = async (
   axios: AxiosInstance,
   runId: string,
   notes?: string,
+  notifyUserIds?: string[]
 ): Promise<any> => {
-  const response = await axios.post(`/api/runs/${runId}/sign-off`, { notes })
+  const response = await axios.post(`/api/runs/${runId}/sign-off`, { notes, notifyUserIds })
+  return response.data
+}
+
+export const revokeSignOff = async (
+  axios: AxiosInstance,
+  runId: string,
+): Promise<any> => {
+  const response = await axios.delete(`/api/runs/${runId}/sign-off`)
   return response.data
 }
 

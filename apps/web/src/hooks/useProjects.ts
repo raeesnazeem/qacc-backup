@@ -8,6 +8,7 @@ import {
   addProjectMember,
   updateProjectMemberRole,
   getWorkspaceUsers,
+  transitionProjectReleaseState,
   Project,
   ProjectWithMembers,
   WorkspaceMember 
@@ -67,6 +68,24 @@ export const useUpdateProject = (id: string) => {
     },
     onError: (error: any) => {
       const message = error.response?.data?.error || 'Failed to update project';
+      toast.error(message);
+    },
+  });
+};
+
+export const useTransitionReleaseState = (id: string) => {
+  const axios = useAuthAxios();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (is_pre_release: boolean) => transitionProjectReleaseState(axios, id, is_pre_release),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', id] });
+      toast.success('Project state updated successfully');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.error || 'Failed to update project state';
       toast.error(message);
     },
   });

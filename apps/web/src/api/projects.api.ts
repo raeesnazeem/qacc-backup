@@ -70,6 +70,15 @@ export const updateProject = async (
   return data;
 };
 
+export const transitionProjectReleaseState = async (
+  axios: AxiosInstance,
+  id: string,
+  is_pre_release: boolean
+): Promise<Project> => {
+  const { data } = await axios.post<Project>(`/api/projects/${id}/transition-release-state`, { is_pre_release });
+  return data;
+};
+
 export const addProjectMember = async (
   axios: AxiosInstance,
   projectId: string,

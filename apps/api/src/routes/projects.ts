@@ -8,6 +8,7 @@ import { logger } from "../lib/logger"
 import { encrypt, decrypt } from "@qacc/shared/encryption"
 
 import * as activityService from "../services/activityService"
+import { bulkDeleteRuns } from "../services/runService"
 import axios from "axios"
 
 const router: Router = Router()
@@ -666,6 +667,52 @@ router.post(
       return res.status(400).json({ error: `Basecamp API error: ${message}` })
     }
   },
+)
+
+/**
+ * POST /api/projects/:id/transition-release-state
+ * Toggles is_pre_release and deletes unpinned pre-release runs if transitioning to pre-release
+ */
+router.post(
+  "/:id/transition-release-state",
+  clerkAuth,
+  requireRole("qa_engineer"), // Assuming QA Engineers and Project Managers can do this
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { is_pre_release } = req.body;
+
+    try {
+      // 1. Update project
+      const { data: project, error } = await supabase
+        .from("projects")
+        .update({ is_pre_release })
+        .eq("id", id)
+        .eq("org_id", req.auth?.orgId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // 2. If transitioning back to pre-release, delete unpinned pre-release runs
+      if (is_pre_release) {
+        const { data: runs } = await supabase
+          .from("qa_runs")
+          .select("id")
+          .eq("project_id", id)
+          .eq("run_type", "pre_release")
+          .eq("is_pinned", false);
+
+        if (runs && runs.length > 0) {
+          const runIds = runs.map((r: any) => r.id);
+          await bulkDeleteRuns(runIds);
+        }
+      }
+
+      return res.json(project);
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
 )
 
 export { router as projectsRouter }
