@@ -54,7 +54,7 @@ export const ProjectsPage = () => {
           </p>
         </div>
 
-        <CanDo role="sub_admin">
+        <CanDo role="qa_engineer">
           <button
             type="button"
             onClick={handleOpenModal}
@@ -103,7 +103,7 @@ export const ProjectsPage = () => {
         {/* Empty State */}
         {!isLoading && !isError && projects?.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <CanDo role="sub_admin">
+            <CanDo role="qa_engineer">
               <button
                 type="button"
                 onClick={handleOpenModal}
@@ -120,7 +120,7 @@ export const ProjectsPage = () => {
               Get started by creating your first project to monitor and run QA
               checks.
             </p>
-            <CanDo role="sub_admin">
+            <CanDo role="qa_engineer">
               <button
                 type="button"
                 onClick={handleOpenModal}

@@ -42,30 +42,7 @@ export const SettingsTab = ({ project }: SettingsTabProps) => {
   const [basecamp, setBasecamp] = useState({
     accountId: project.basecamp_account_id || "",
     projectId: project.basecamp_project_id || "",
-    todoListId: project.basecamp_todo_list_id || "",
-    postTodoListId: project.basecamp_post_todo_list_id || "",
   })
-  const [preReleaseLink, setPreReleaseLink] = useState("")
-  const [postReleaseLink, setPostReleaseLink] = useState("")
-
-  const handleLinkChange = (type: "pre" | "post", url: string) => {
-    if (type === "pre") setPreReleaseLink(url)
-    else setPostReleaseLink(url)
-
-    const match = url.match(
-      /basecamp\.com\/(\d+)\/buckets\/(\d+)\/todolists\/(\d+)/,
-    )
-    if (match) {
-      const [, accountId, projectId, todoListId] = match
-      setBasecamp((prev) => ({
-        ...prev,
-        accountId,
-        projectId,
-        [type === "pre" ? "todoListId" : "postTodoListId"]: todoListId,
-      }))
-    }
-  }
-  const [showBasecamp, setShowBasecamp] = useState(false)
 
   const maskValue = (value: string, showLast = 0) => {
     if (!value) return ""
@@ -89,10 +66,8 @@ export const SettingsTab = ({ project }: SettingsTabProps) => {
   const handleUpdateBasecamp = async (e: React.FormEvent) => {
     e.preventDefault()
     updateProject({
-      basecamp_account_id: basecamp.accountId,
+      basecamp_account_id: "4023059",
       basecamp_project_id: basecamp.projectId,
-      basecamp_todo_list_id: basecamp.todoListId,
-      basecamp_post_todo_list_id: basecamp.postTodoListId,
     })
   }
 
@@ -278,47 +253,16 @@ export const SettingsTab = ({ project }: SettingsTabProps) => {
                 Automatically sync QA issues to your Basecamp project's to-do
                 list.
               </p>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                      Pre-release to-do task link
-                    </label>
-                    <input
-                      type="url"
-                      value={preReleaseLink}
-                      onChange={(e) => handleLinkChange("pre", e.target.value)}
-                      placeholder="Paste Basecamp to-do list URL"
-                      className="w-full bg-slate-50 dark:bg-[#1d2a31] text-slate-900 dark:text-slate-200 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                      Post-release to-do task link
-                    </label>
-                    <input
-                      type="url"
-                      value={postReleaseLink}
-                      onChange={(e) => handleLinkChange("post", e.target.value)}
-                      placeholder="Paste Basecamp to-do list URL"
-                      className="w-full bg-slate-50 dark:bg-[#1d2a31] text-slate-900 dark:text-slate-200 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                     Account ID
                   </label>
                   <input
-                    type={showBasecamp ? "text" : "password"}
-                    value={basecamp.accountId}
-                    onChange={(e) =>
-                      setBasecamp({ ...basecamp, accountId: e.target.value })
-                    }
-                    placeholder="Enter Account ID"
-                    className="w-full bg-slate-50 dark:bg-[#1d2a31] text-slate-900 dark:text-slate-200 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
+                    type="text"
+                    value="4023059"
+                    disabled
+                    className="w-full bg-slate-100 dark:bg-[#131d22] text-slate-500 dark:text-slate-500 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none transition-all cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -326,43 +270,12 @@ export const SettingsTab = ({ project }: SettingsTabProps) => {
                     Project ID
                   </label>
                   <input
-                    type={showBasecamp ? "text" : "password"}
+                    type="text"
                     value={basecamp.projectId}
                     onChange={(e) =>
                       setBasecamp({ ...basecamp, projectId: e.target.value })
                     }
                     placeholder="Enter Project ID"
-                    className="w-full bg-slate-50 dark:bg-[#1d2a31] text-slate-900 dark:text-slate-200 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                    Pre-release To-Do List ID
-                  </label>
-                  <input
-                    type={showBasecamp ? "text" : "password"}
-                    value={basecamp.todoListId}
-                    onChange={(e) =>
-                      setBasecamp({ ...basecamp, todoListId: e.target.value })
-                    }
-                    placeholder="Enter To-Do List ID"
-                    className="w-full bg-slate-50 dark:bg-[#1d2a31] text-slate-900 dark:text-slate-200 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                    Post-release To-Do List ID
-                  </label>
-                  <input
-                    type={showBasecamp ? "text" : "password"}
-                    value={basecamp.postTodoListId}
-                    onChange={(e) =>
-                      setBasecamp({
-                        ...basecamp,
-                        postTodoListId: e.target.value,
-                      })
-                    }
-                    placeholder="Enter Post-release To-Do List ID"
                     className="w-full bg-slate-50 dark:bg-[#1d2a31] text-slate-900 dark:text-slate-200 border border-slate-400/50 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent transition-all"
                   />
                 </div>

@@ -112,9 +112,7 @@ export const ProjectCard = ({ project }: ProjectCardProps) => {
 
           <div className="flex items-center space-x-2 shrink-0">
             {project.basecamp_account_id &&
-              project.basecamp_project_id &&
-              project.basecamp_todo_list_id &&
-              project.basecamp_post_todo_list_id && (
+              project.basecamp_project_id && (
                 <div
                   className="flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-500 border border-yellow-100 dark:border-yellow-900/50 rounded-full w-6 h-6"
                   title="Basecamp Linked"

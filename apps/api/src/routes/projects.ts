@@ -97,6 +97,7 @@ router.post(
       await supabase.from("project_settings").insert({
         project_id: project.id,
         notification_prefs: {},
+        basecamp_account_id: '4023059',
       })
 
       // [Step 3.1 - 3.2] Log Project Creation

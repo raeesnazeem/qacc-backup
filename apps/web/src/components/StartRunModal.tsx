@@ -7,6 +7,7 @@ import {
   useStartRun,
   useFetchUrls,
 } from "../hooks/useRuns"
+import { useUpdateProject } from "../hooks/useProjects"
 import { Project } from "../api/projects.api"
 import {
   AlertCircle,
@@ -41,6 +42,9 @@ export const StartRunModal = ({
   const { mutate: createRun, isPending: isCreating } = useCreateRun()
   const { mutate: startRun, isPending: isStarting } = useStartRun()
   const { isPending: isUpdating } = useUpdateRunStatus()
+  const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject(project.id)
+  const isBasecampLinked = !!project.basecamp_project_id
+  const [linkProjectUrl, setLinkProjectUrl] = useState("")
   const [isUrlsExpanded, setIsUrlsExpanded] = useState(false)
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
   const [liveSiteUrl, setLiveSiteUrl] = useState("")
@@ -353,10 +357,44 @@ export const StartRunModal = ({
           </button>
         </div>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col min-h-0"
-        >
+        {!isBasecampLinked ? (
+          <div className="p-8 flex flex-col items-center justify-center space-y-6 flex-1 text-center min-h-[300px]">
+            <div className="p-3 bg-yellow-500/10 rounded-full">
+              <AlertCircle className="w-12 h-12 text-yellow-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Basecamp Not Linked</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                To start a QA run, this project must be linked to a Basecamp Project. Please enter the Project URL below.
+              </p>
+            </div>
+            <div className="w-full max-w-sm space-y-4 mt-4">
+              <input
+                type="url"
+                value={linkProjectUrl}
+                onChange={(e) => setLinkProjectUrl(e.target.value)}
+                placeholder="Paste Basecamp Project URL"
+                className="w-full bg-slate-50 dark:bg-[#131d22] border border-slate-300 dark:border-slate-700 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-accent text-center text-slate-900 dark:text-slate-200"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const numbers = linkProjectUrl.match(/\d+/g)
+                  const extractedId = numbers ? numbers[numbers.length - 1] : linkProjectUrl
+                  updateProject({ basecamp_project_id: extractedId, basecamp_account_id: '4023059' })
+                }}
+                disabled={isUpdatingProject || !linkProjectUrl.trim()}
+                className="w-full flex justify-center items-center px-4 py-3 bg-accent text-white rounded-md font-bold text-sm tracking-wider uppercase hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                {isUpdatingProject ? <Loader2 className="w-5 h-5 animate-spin" /> : "Link Project"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col min-h-0"
+          >
           <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
             {/* Run Type */}
             <div>
@@ -766,7 +804,8 @@ export const StartRunModal = ({
               )}
             </button>
           </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>,
     document.body,

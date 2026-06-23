@@ -76,10 +76,13 @@ export const LogoOnChatbotFindingCard: React.FC<FindingCardProps> = ({
   const handlePushToBasecamp = async () => {
     setIsPushing(true)
     try {
-      const response = await api.post(`/api/findings/${finding.id}/push-basecamp`, {
-        isLogoVerified,
-        hasTask: hasTask || isAssigned,
-      })
+      const response = await api.post(
+        `/api/findings/${finding.id}/push-basecamp`,
+        {
+          isLogoVerified,
+          hasTask: hasTask || isAssigned,
+        },
+      )
       if (response.data?.commentUrl) setCommentUrl(response.data.commentUrl)
       setIsPushed(true)
       if (onConfirm) onConfirm(finding.id)
@@ -125,14 +128,15 @@ export const LogoOnChatbotFindingCard: React.FC<FindingCardProps> = ({
     .filter(
       (v, i, a) =>
         a.findIndex((t: any) => {
-          const tId = String(t.userId || t.user_id || t.id || "t_" + i);
-          const vId = String(v.userId || v.user_id || v.id || "v_" + i);
-          if (tId !== "undefined" && vId !== "undefined" && tId === vId) return true;
-          if (t.email && v.email && t.email === v.email) return true;
-          const tName = (t.full_name || t.name || "").trim().toLowerCase();
-          const vName = (v.full_name || v.name || "").trim().toLowerCase();
-          if (tName && vName && tName === vName) return true;
-          return false;
+          const tId = String(t.userId || t.user_id || t.id || "t_" + i)
+          const vId = String(v.userId || v.user_id || v.id || "v_" + i)
+          if (tId !== "undefined" && vId !== "undefined" && tId === vId)
+            return true
+          if (t.email && v.email && t.email === v.email) return true
+          const tName = (t.full_name || t.name || "").trim().toLowerCase()
+          const vName = (v.full_name || v.name || "").trim().toLowerCase()
+          if (tName && vName && tName === vName) return true
+          return false
         }) === i,
     )
 
