@@ -101,7 +101,7 @@ export async function processRunChecksJob(job: Job) {
         .eq("id", runId)
         .single()
 
-      const checksToRun = run?.enabled_checks || []
+      const checksToRun = job.data.overrideChecks || run?.enabled_checks || []
       const checkPromises: Promise<any[]>[] = []
 
       if (checksToRun.includes("visual_regression")) {

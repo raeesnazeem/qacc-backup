@@ -20,6 +20,7 @@ import {
   QARunsResponse,
   QAFinding,
   CreateFindingInput,
+  retryCheck,
 } from "../api/runs.api"
 import toast from "react-hot-toast"
 
@@ -102,6 +103,24 @@ export const useStartRun = () => {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || "Failed to start scan")
+    },
+  })
+}
+
+export const useRetryCheck = () => {
+  const axios = useAuthAxios()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ runId, checkKey, wp_password }: { runId: string; checkKey: string; wp_password?: string }) =>
+      retryCheck(axios, runId, checkKey, wp_password),
+    onSuccess: (_, { runId }) => {
+      queryClient.invalidateQueries({ queryKey: ["run", runId] })
+      queryClient.invalidateQueries({ queryKey: ["run-findings", runId] })
+      toast.success("Check triggered")
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || "Failed to trigger check")
     },
   })
 }

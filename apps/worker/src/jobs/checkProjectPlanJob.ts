@@ -13,7 +13,7 @@ const logger = pino({
 })
 
 export async function processCheckProjectPlanJob(job: Job) {
-  const { runId, projectId } = job.data
+  const { runId, projectId, isRetry } = job.data
 
   if (!runId || !projectId) {
     throw new Error(
@@ -21,7 +21,7 @@ export async function processCheckProjectPlanJob(job: Job) {
     )
   }
 
-  logger.info({ runId, projectId }, "Processing project plan check job")
+  logger.info({ runId, projectId, isRetry }, "Processing project plan check job")
 
   // Step 1: Fetch project settings from Supabase to get Basecamp credentials
   const { data: projectSettings, error: settingsError } = await supabase
@@ -44,6 +44,9 @@ export async function processCheckProjectPlanJob(job: Job) {
       { projectId },
       "No project settings found. Skipping Basecamp checks.",
     )
+    if (isRetry) {
+      await supabase.from("qa_runs").update({ status: "completed" }).eq("id", runId)
+    }
     return
   }
 
@@ -59,6 +62,9 @@ export async function processCheckProjectPlanJob(job: Job) {
       { projectId },
       "Basecamp credentials not configured for this project. Skipping.",
     )
+    if (isRetry) {
+      await supabase.from("qa_runs").update({ status: "completed" }).eq("id", runId)
+    }
     return
   }
 
@@ -235,7 +241,7 @@ export async function processCheckProjectPlanJob(job: Job) {
     PAGE_CHECKS.includes(c),
   )
 
-  if (!needsPageScan) {
+  if (!needsPageScan || isRetry) {
     const { qaQueue } = require("../lib/queue") // Dyn import queue
     await supabase
       .from("qa_runs")

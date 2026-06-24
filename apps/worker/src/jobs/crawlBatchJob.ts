@@ -33,7 +33,7 @@ export async function processCrawlBatchJob(job: Job) {
         .eq("id", pageId)
         .single()
 
-      if (pageData?.status === "done" || pageData?.status === "completed") {
+      if (!job.data.overrideChecks && (pageData?.status === "done" || pageData?.status === "completed")) {
         logger.info({ pageId }, "Page already processed, skipping in batch")
         continue
       }
@@ -50,6 +50,7 @@ export async function processCrawlBatchJob(job: Job) {
           url: pageUrl,
           projectId,
           enabledChecks: job.data.enabledChecks,
+          overrideChecks: job.data.overrideChecks,
           wpPassword,
         },
       } as Job)

@@ -81,27 +81,39 @@ export async function processCrawlPageJob(job: Job) {
   }
 
   const updateProgress = async (progress: number, step: string) => {
-    const { error: progressError } = await supabase
-      .from("pages")
-      .update({ progress, current_step: step })
-      .eq("id", pageId)
+    if (!job.data.overrideChecks) {
+      const { error: progressError } = await supabase
+        .from("pages")
+        .update({ progress, current_step: step })
+        .eq("id", pageId)
 
-    if (progressError) {
-      logger.error(
-        { pageId, error: progressError.message, progress, step },
-        "Failed to update page progress in DB",
-      )
+      if (progressError) {
+        logger.error(
+          { pageId, error: progressError.message, progress, step },
+          "Failed to update page progress in DB",
+        )
+      }
     }
 
     const progressChannel = supabase.channel(`run:${runId}`)
-    await progressChannel.httpSend("page_progress", {
-      pageId,
-      progress,
-      current_step: step,
+    await progressChannel.send({
+      type: "broadcast",
+      event: "page_progress",
+      payload: {
+        pageId,
+        progress,
+        current_step: step,
+      }
     })
   }
+  const { data: pageData } = await supabase
+    .from("pages")
+    .select("check_progress")
+    .eq("id", pageId)
+    .single()
+
   let currentCheckProgress: Record<string, { progress: number; step: string }> =
-    {}
+    pageData?.check_progress || {}
 
   const updateCheckProgress = async (
     checkKey: string,
@@ -123,29 +135,34 @@ export async function processCrawlPageJob(job: Job) {
     }
 
     const progressChannel = supabase.channel(`run:${runId}`)
-    await progressChannel.httpSend("page_progress", {
-      pageId,
-      check_progress: currentCheckProgress,
+    await progressChannel.send({
+      type: "broadcast",
+      event: "page_progress",
+      payload: {
+        pageId,
+        check_progress: currentCheckProgress,
+      }
     })
   }
 
   try {
-    // Step 1: Update page status to 'processing' and set initial step
-    logger.info({ pageId }, "Setting page status to processing")
-    const { error: statusError } = await supabase
-      .from("pages")
-      .update({
-        status: "processing",
-        current_step: "Starting page crawl...",
-        progress: 2,
-      })
-      .eq("id", pageId)
+    if (!job.data.overrideChecks) {
+      logger.info({ pageId }, "Setting page status to processing")
+      const { error: statusError } = await supabase
+        .from("pages")
+        .update({
+          status: "processing",
+          current_step: "Starting page crawl...",
+          progress: 2,
+        })
+        .eq("id", pageId)
 
-    if (statusError) {
-      logger.error(
-        { pageId, error: statusError.message },
-        "Failed to update page status to processing",
-      )
+      if (statusError) {
+        logger.error(
+          { pageId, error: statusError.message },
+          "Failed to update page status to processing",
+        )
+      }
     }
 
     // Immediate broadcast to update UI
@@ -156,7 +173,7 @@ export async function processCrawlPageJob(job: Job) {
       payload: { pageId, progress: 2, current_step: "Starting page crawl..." },
     })
 
-    const enabledChecks = run?.enabled_checks || []
+    const enabledChecks = job.data.overrideChecks || run?.enabled_checks || []
 
     // We only need screenshots if we are doing visual regression, accessibility, or hero media!
     // const needsScreenshots = enabledChecks.some(
@@ -169,21 +186,23 @@ export async function processCrawlPageJob(job: Job) {
     // We dont capture 3 viewports for the page.
     logger.info({ pageId }, "Skipping 3-viewport screenshot capture")
 
-    const { error: updatePageError } = await supabase
-      .from("pages")
-      .update({
-        screenshot_url_desktop: null,
-        screenshot_url_tablet: null,
-        screenshot_url_mobile: null,
-        status: "screenshotted",
-      })
-      .eq("id", pageId)
+    if (!job.data.overrideChecks) {
+      const { error: updatePageError } = await supabase
+        .from("pages")
+        .update({
+          screenshot_url_desktop: null,
+          screenshot_url_tablet: null,
+          screenshot_url_mobile: null,
+          status: "screenshotted",
+        })
+        .eq("id", pageId)
 
-    if (updatePageError) {
-      logger.error(
-        { pageId, error: updatePageError.message },
-        "Failed to update page status",
-      )
+      if (updatePageError) {
+        logger.error(
+          { pageId, error: updatePageError.message },
+          "Failed to update page status",
+        )
+      }
     }
 
     // Step 3.5: Responsive Visual Check (Check Factor 12)
@@ -279,7 +298,7 @@ export async function processCrawlPageJob(job: Job) {
         }
       }
 
-      const enabledChecks = run?.enabled_checks || []
+      const enabledChecks = job.data.overrideChecks || run?.enabled_checks || []
       const checkPromises: Promise<any[]>[] = []
 
       // Fetch project details and settings for pre-release checks
@@ -718,14 +737,29 @@ export async function processCrawlPageJob(job: Job) {
       //   .catch((e) => logger.error("Failed to queue run_ai_checks:", e))
 
       // Step 5: Update page status to 'done'
-      await supabase
-        .from("pages")
-        .update({
-          status: "done",
-          progress: 100,
-          current_step: "All checks complete",
-        })
-        .eq("id", pageId)
+      if (!job.data.overrideChecks) {
+        await supabase
+          .from("pages")
+          .update({
+            status: "done",
+            progress: 100,
+            current_step: "All checks complete",
+          })
+          .eq("id", pageId)
+      } else {
+        // If it's an override, we only mark the specific check as done in check_progress
+        const checkKey = job.data.overrideChecks[0]
+        if (checkKey) {
+          const { data: pageData } = await supabase.from("pages").select("check_progress").eq("id", pageId).single()
+          if (pageData) {
+            const updatedCheckProgress = {
+              ...(pageData.check_progress || {}),
+              [checkKey]: { progress: 100, status: "done", step: "Check complete" }
+            }
+            await supabase.from("pages").update({ check_progress: updatedCheckProgress }).eq("id", pageId)
+          }
+        }
+      }
     } finally {
       if (browser) {
         await browser
@@ -743,78 +777,94 @@ export async function processCrawlPageJob(job: Job) {
 
     if (pageId) {
       const errorMessage = error.message.split("\n")[0] || "Unknown error"
-      await supabase
-        .from("pages")
-        .update({
-          status: "failed",
-          current_step: `Error: ${errorMessage}`,
-        })
-        .eq("id", pageId)
+      if (!job.data.overrideChecks) {
+        await supabase
+          .from("pages")
+          .update({
+            status: "failed",
+            current_step: `Error: ${errorMessage}`,
+          })
+          .eq("id", pageId)
+      } else {
+        const checkKey = job.data.overrideChecks[0]
+        if (checkKey) {
+          const { data: pageData } = await supabase.from("pages").select("check_progress").eq("id", pageId).single()
+          if (pageData) {
+            const updatedCheckProgress = {
+              ...(pageData.check_progress || {}),
+              [checkKey]: { progress: 0, status: "failed", step: `Error: ${errorMessage}` }
+            }
+            await supabase.from("pages").update({ check_progress: updatedCheckProgress }).eq("id", pageId)
+          }
+        }
+      }
     }
 
     throw error
   } finally {
-    // Step 6 & 7: Atomically increment pages_processed and check for run completion
-    const { data: isComplete, error: rpcError } = await supabase.rpc(
-      "increment_and_check_completion",
-      { run_id_param: runId },
-    )
-
-    if (rpcError) {
-      logger.warn(
-        { runId, error: rpcError.message },
-        "RPC increment_and_check_completion failed, falling back",
+    if (!job.data.overrideChecks) {
+      // Step 6 & 7: Atomically increment pages_processed and check for run completion
+      const { data: isComplete, error: rpcError } = await supabase.rpc(
+        "increment_and_check_completion",
+        { run_id_param: runId },
       )
 
-      // Fallback: use old increment RPC
-      await supabase.rpc("increment_pages_processed", { run_id_param: runId })
+      if (rpcError) {
+        logger.warn(
+          { runId, error: rpcError.message },
+          "RPC increment_and_check_completion failed, falling back",
+        )
 
-      // Fallback: check completion separately
-      const { data: runCheck } = await supabase
-        .from("qa_runs")
-        .select("pages_processed, pages_total, status")
-        .eq("id", runId)
-        .single()
+        // Fallback: use old increment RPC
+        await supabase.rpc("increment_pages_processed", { run_id_param: runId })
 
-      if (
-        runCheck &&
-        runCheck.status === "running" &&
-        runCheck.pages_total > 0 &&
-        runCheck.pages_processed >= runCheck.pages_total
-      ) {
-        await supabase
+        // Fallback: check completion separately
+        const { data: runCheck } = await supabase
           .from("qa_runs")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
+          .select("pages_processed, pages_total, status")
           .eq("id", runId)
+          .single()
 
-        logger.info({ runId }, "Run marked as completed (fallback)")
+        if (
+          runCheck &&
+          runCheck.status === "running" &&
+          runCheck.pages_total > 0 &&
+          runCheck.pages_processed >= runCheck.pages_total
+        ) {
+          await supabase
+            .from("qa_runs")
+            .update({
+              status: "completed",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", runId)
+
+          logger.info({ runId }, "Run marked as completed (fallback)")
+
+          qaQueue
+            .add("generate_embeddings", { runId })
+            .catch((e) => logger.error("Failed to queue generate_embeddings:", e))
+        }
+      } else if (isComplete) {
+        logger.info({ runId }, "Run marked as completed")
 
         qaQueue
           .add("generate_embeddings", { runId })
           .catch((e) => logger.error("Failed to queue generate_embeddings:", e))
       }
-    } else if (isComplete) {
-      logger.info({ runId }, "Run marked as completed")
 
-      qaQueue
-        .add("generate_embeddings", { runId })
-        .catch((e) => logger.error("Failed to queue generate_embeddings:", e))
+      // Step 8: Broadcast progress update
+      const finalChannel = supabase.channel(`run:${runId}`)
+      await finalChannel.send({
+        type: "broadcast",
+        event: "progress",
+        payload: {
+          pageUrl,
+          status: "done",
+          pageId,
+        },
+      })
     }
-
-    // Step 8: Broadcast progress update
-    const finalChannel = supabase.channel(`run:${runId}`)
-    await finalChannel.send({
-      type: "broadcast",
-      event: "progress",
-      payload: {
-        pageUrl,
-        status: "done",
-        pageId,
-      },
-    })
 
     logger.info({ pageId, runId }, "Page crawl lifecycle finished")
   }

@@ -13,6 +13,7 @@ import {
   useUpdateRunStatus,
   useUpdateFinding,
   useRuns,
+  useRetryCheck,
 } from "../hooks/useRuns"
 import { useCreateTask, useTasks } from "../hooks/useTasks"
 import { AssignMemberModal } from "../components/AssignMemberModal"
@@ -261,6 +262,7 @@ export const RunDetailPage = () => {
         ).length
     const allPagesProgress = (() => {
       if (totalPages === 0) return 0
+      if (isRunCompleted) return 100
 
       const hasUrlTabCompare = run.enabled_checks?.includes("url_tab_compare")
 
@@ -363,6 +365,32 @@ export const RunDetailPage = () => {
 
   const { data: tasksData } = useTasks({ projectId: projectId!, limit: 1000 })
   const updateFindingMutation = useUpdateFinding(selectedPageId)
+  const retryCheckMutation = useRetryCheck()
+  const [retryingChecks, setRetryingChecks] = useState<string[]>([])
+  const [retryPasswordModalOpen, setRetryPasswordModalOpen] = useState(false)
+  const [retryCheckKey, setRetryCheckKey] = useState<string | null>(null)
+  const [retryPassword, setRetryPassword] = useState("")
+
+  const handleRetryCheck = async (checkKey: string) => {
+    if (checkKey === "verify_plugin_updates") {
+      setRetryCheckKey(checkKey)
+      setRetryPasswordModalOpen(true)
+      return
+    }
+    executeRetryCheck(checkKey)
+  }
+
+  const executeRetryCheck = async (checkKey: string, password?: string) => {
+    if (retryingChecks.includes(checkKey)) return
+    setRetryingChecks((prev) => [...prev, checkKey])
+    try {
+      await retryCheckMutation.mutateAsync({ runId: runId!, checkKey, wp_password: password })
+    } finally {
+      setTimeout(() => {
+        setRetryingChecks((prev) => prev.filter((k) => k !== checkKey))
+      }, 1000)
+    }
+  }
   const { mutate: createTask } = useCreateTask()
 
   // Helper to consolidate all dead link findings into a single finding
@@ -1554,21 +1582,25 @@ export const RunDetailPage = () => {
                               const totalPages = relevantPages.length
                               const completedPages = isRunCompleted
                                 ? totalPages
-                                : relevantPages.filter(
-                                    (p) =>
+                                : relevantPages.filter((p) => {
+                                    // If we have check_progress for this specific check, respect it
+                                    const spCheck = (p as any).check_progress?.[checkKey]
+                                    if (spCheck && spCheck.status) {
+                                      return spCheck.status === "done" || spCheck.status === "failed"
+                                    }
+                                    return (
                                       p.status === "done" ||
                                       p.status === "checked" ||
-                                      p.status === "failed",
-                                  ).length
+                                      p.status === "failed"
+                                    )
+                                  }).length
+
                               const deadLinksProgress = (() => {
                                 if (totalPages === 0) return 0
 
-                                const hasUrlTabCompare =
-                                  run.enabled_checks?.includes(
-                                    "url_tab_compare",
-                                  )
+                                const isUrlTabCompare = checkKey === "url_tab_compare"
 
-                                if (hasUrlTabCompare) {
+                                if (isUrlTabCompare) {
                                   // Safely find the homepage locally
                                   const localHomepage = run.pages?.find(
                                     (p) =>
@@ -1581,44 +1613,38 @@ export const RunDetailPage = () => {
                                   )
 
                                   // Weight normal pages 50%, and homepage crawl 50%
-                                  const completedWithoutHomepage =
-                                    relevantPages.filter(
-                                      (p) =>
-                                        (p.status === "done" ||
-                                          p.status === "checked" ||
-                                          p.status === "failed") &&
-                                        p.id !== localHomepage?.id,
-                                    ).length
+                                  const completedWithoutHomepage = relevantPages.filter((p) => {
+                                    const spCheck = (p as any).check_progress?.[checkKey]
+                                    const isPageDone = spCheck?.status 
+                                      ? (spCheck.status === "done" || spCheck.status === "failed")
+                                      : (p.status === "done" || p.status === "checked" || p.status === "failed")
+                                    return isPageDone && p.id !== localHomepage?.id
+                                  }).length
 
-                                  const basePagesToProcess = Math.max(
-                                    1,
-                                    totalPages - 1,
-                                  )
+                                  const basePagesToProcess = Math.max(1, totalPages - 1)
                                   const baseProgress =
-                                    (completedWithoutHomepage /
-                                      basePagesToProcess) *
-                                    50
-                                  const homeProgress = localHomepage
-                                    ? ((localHomepage.progress || 0) / 100) * 50
-                                    : 0
+                                    (completedWithoutHomepage / basePagesToProcess) * 50
+                                  
+                                  const hpCheck = localHomepage ? (localHomepage as any).check_progress?.[checkKey] : null
+                                  const isHpDone = hpCheck?.status
+                                    ? (hpCheck.status === "done" || hpCheck.status === "failed")
+                                    : (localHomepage?.status === "done" || localHomepage?.status === "checked" || localHomepage?.status === "failed")
+                                  const homeProgressRaw = isHpDone ? 100 : (hpCheck?.progress ?? localHomepage?.progress ?? 0)
+                                  const homeProgress = (homeProgressRaw / 100) * 50
 
                                   return isRunCompleted
                                     ? 100
                                     : Math.round(baseProgress + homeProgress)
                                 }
 
-                                return Math.round(
-                                  (completedPages / totalPages) * 100,
-                                )
+                                return Math.round((completedPages / totalPages) * 100)
                               })()
 
                               const activePage =
-                                relevantPages.find(
-                                  (p) => p.status === "processing",
-                                ) ||
-                                relevantPages.find(
-                                  (p) => p.status === "pending",
-                                )
+                                relevantPages.find((p) => (p as any).check_progress?.[checkKey]?.status === "processing") ||
+                                relevantPages.find((p) => (p as any).check_progress?.[checkKey]?.status === "pending") ||
+                                relevantPages.find((p) => p.status === "processing") ||
+                                relevantPages.find((p) => p.status === "pending")
 
                               const checkFailedPage =
                                 checkKey === "url_tab_compare"
@@ -1636,10 +1662,7 @@ export const RunDetailPage = () => {
                                       (p) => p.status === "failed",
                                     )
 
-                              const checkProgress =
-                                checkKey === "url_tab_compare"
-                                  ? activePage?.progress || 0
-                                  : deadLinksProgress
+                              const checkProgress = deadLinksProgress
 
                               // Use the fast loop effect if we are not complete, so it feels realtime
                               const displayUrl = isRunCompleted
@@ -1651,7 +1674,18 @@ export const RunDetailPage = () => {
                                   : "Preparing..."
 
                               return (
-                                <div className="border border-slate-400 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-[#1D2A31]">
+                                <div className="relative border border-slate-400 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-[#1D2A31]">
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      handleRetryCheck(checkKey)
+                                    }}
+                                    className="absolute -top-3 -right-3 p-1.5 bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-600 rounded-full text-slate-500 hover:text-accent hover:border-accent transition-colors shadow-sm z-10"
+                                    title={`Retry ${checkName}`}
+                                  >
+                                    <RefreshCw size={14} className={retryingChecks.includes(checkKey) ? "animate-spin text-accent" : ""} />
+                                  </button>
                                   <div className="flex justify-between items-center mb-2 text-xs font-mono text-slate-800 dark:text-slate-200">
                                     <span>
                                       {checkFailedPage &&
@@ -1674,7 +1708,7 @@ export const RunDetailPage = () => {
                                         <>
                                           {isRunCompleted
                                             ? "Finished URL & Tab Name Comparison"
-                                            : activePage?.current_step ||
+                                            : ((activePage as any)?.check_progress?.[checkKey]?.step || activePage?.current_step) ||
                                               "Preparing..."}
                                         </>
                                       ) : (
@@ -1682,13 +1716,12 @@ export const RunDetailPage = () => {
                                           {isRunCompleted
                                             ? "All pages checked"
                                             : `scanning: ${displayUrl}`}
-                                          {!isRunCompleted &&
-                                            activePage?.current_step && (
-                                              <span className="text-slate-500 ml-2">
-                                                -{" "}
-                                                {activePage.current_step.toLowerCase()}
-                                              </span>
-                                            )}
+                                          {!isRunCompleted && activePage && (
+                                            <span className="text-slate-500 ml-2">
+                                              -{" "}
+                                              {((activePage as any).check_progress?.[checkKey]?.step || activePage.current_step || "").toLowerCase()}
+                                            </span>
+                                          )}
                                         </>
                                       )}
                                     </span>
@@ -1712,24 +1745,40 @@ export const RunDetailPage = () => {
                               )
                             })()
                           : relevantPages.map((page) => {
-                              const isCompleted =
+                              const isRunCompleted =
                                 run.status === "completed" ||
                                 run.status === "cancelled" ||
-                                run.status === "failed" ||
-                                (!isApiOnly &&
-                                  (page.status === "done" ||
-                                    page.status === "checked"))
+                                run.status === "failed"
                               const specificCheck = (page as any)
                                 .check_progress?.[checkKey]
-                              const pageProgress = isCompleted
+                              
+                              let isDone = false
+                              if (specificCheck && specificCheck.status) {
+                                isDone = specificCheck.status === "done" || specificCheck.status === "failed"
+                              } else {
+                                isDone = page.status === "done" || isRunCompleted
+                              }
+
+                              const pageProgress = isDone
                                 ? 100
-                                : specificCheck?.progress || 0
+                                : (specificCheck?.progress ?? page.progress ?? 0)
 
                               return (
                                 <div
                                   key={page.id}
-                                  className="border border-slate-400 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-[#1D2A31]"
+                                  className="relative border border-slate-400 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-[#1D2A31]"
                                 >
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      handleRetryCheck(checkKey)
+                                    }}
+                                    className="absolute -top-3 -right-3 p-1.5 bg-slate-50 dark:bg-[#1D2A31] border border-slate-300 dark:border-slate-600 rounded-full text-slate-500 hover:text-accent hover:border-accent transition-colors shadow-sm z-10"
+                                    title={`Retry ${checkName}`}
+                                  >
+                                    <RefreshCw size={14} className={retryingChecks.includes(checkKey) ? "animate-spin text-accent" : ""} />
+                                  </button>
                                   <div className="flex justify-between items-center mb-2 text-xs font-mono text-slate-800 dark:text-slate-200">
                                     <span>
                                       scanning:{" "}
@@ -1738,7 +1787,7 @@ export const RunDetailPage = () => {
                                         <span className="text-red-500 font-bold ml-2">
                                           - {page.current_step || "Failed"}
                                         </span>
-                                      ) : !isCompleted &&
+                                      ) : !isDone &&
                                         specificCheck?.step ? (
                                         <span className="text-slate-500 ml-2">
                                           - {specificCheck.step.toLowerCase()}
@@ -1749,7 +1798,7 @@ export const RunDetailPage = () => {
                                     <span className="font-bold">
                                       {run.status === "cancelled" ||
                                       run.status === "failed" ||
-                                      (isCompleted && pageProgress < 100)
+                                      (isDone && pageProgress < 100)
                                         ? `${pageProgress}% ${pageProgress < 100 ? "(Failed)" : ""}`
                                         : `${pageProgress}%`}
                                     </span>
@@ -1938,7 +1987,8 @@ export const RunDetailPage = () => {
                       </div>
                     </div>
 
-                    {/* Audit summary */}
+
+      {/* MANUAL SCAN OVERLAY */}
                     <div>
                       <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                         Audit Summary
@@ -2644,6 +2694,56 @@ export const RunDetailPage = () => {
       />
 
       <TaskStagingOverlay projectId={projectId!} />
+
+      {retryPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-[#1D2A31] p-6 shadow-xl border border-slate-200 dark:border-slate-800">
+            <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">WordPress Password Required</h3>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              Please enter the WordPress application password to retry the plugin updates check.
+            </p>
+            <input
+              type="password"
+              className="mb-6 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#131d22] px-3 py-2 text-slate-900 dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              placeholder="Application Password"
+              value={retryPassword}
+              onChange={(e) => setRetryPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  executeRetryCheck(retryCheckKey!, retryPassword)
+                  setRetryPasswordModalOpen(false)
+                  setRetryPassword("")
+                  setRetryCheckKey(null)
+                }
+              }}
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                className="rounded-md px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => {
+                  setRetryPasswordModalOpen(false)
+                  setRetryPassword("")
+                  setRetryCheckKey(null)
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50"
+                onClick={() => {
+                  executeRetryCheck(retryCheckKey!, retryPassword)
+                  setRetryPasswordModalOpen(false)
+                  setRetryPassword("")
+                  setRetryCheckKey(null)
+                }}
+                disabled={!retryPassword}
+              >
+                Retry Scan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

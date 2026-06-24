@@ -182,14 +182,22 @@ export const updateRunPinStatus = async (
 }
 
 export const startRun = async (
-  axios: AxiosInstance,
+  api: ReturnType<typeof import("../lib/useAuthAxios").useAuthAxios>,
   runId: string,
   wp_password?: string,
 ): Promise<QARun> => {
-  const response = await axios.post<QARun>(`/api/runs/${runId}/start`, {
-    wp_password,
-  })
-  return response.data
+  const { data } = await api.post(`/api/runs/${runId}/start`, { wp_password })
+  return data
+}
+
+export const retryCheck = async (
+  api: ReturnType<typeof import("../lib/useAuthAxios").useAuthAxios>,
+  runId: string,
+  checkKey: string,
+  wp_password?: string
+): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post(`/api/runs/${runId}/retry-check`, { checkKey, wp_password })
+  return data
 }
 
 export const signOffRun = async (

@@ -13,7 +13,7 @@ const logger = pino({
 })
 
 export async function processCheckPaidMediaJob(job: Job) {
-  const { runId, projectId } = job.data
+  const { runId, projectId, isRetry } = job.data
 
   if (!runId || !projectId) {
     throw new Error("Missing required data for checkPaidMedia job")
@@ -308,7 +308,7 @@ export async function processCheckPaidMediaJob(job: Job) {
   const needsPageScan = runData?.enabled_checks?.some((c: string) =>
     PAGE_CHECKS.includes(c),
   )
-  if (!needsPageScan) {
+  if (!needsPageScan || isRetry) {
     const { qaQueue } = require("../lib/queue")
     await supabase
       .from("qa_runs")

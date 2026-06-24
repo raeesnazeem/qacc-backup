@@ -1718,14 +1718,22 @@ export async function checkPluginUpdates(
     // Hardcoded username as requested
     if (onProgress) await onProgress(30, "Logging into WordPress...")
 
-    await newPage
-      .fill("#user_login", "onboarding.india@growth99.com")
-      .catch(() => {})
-    await newPage.fill("#user_pass", wpPassword).catch(() => {})
-    await newPage.click("#wp-submit").catch(() => {})
-    await newPage
-      .waitForNavigation({ waitUntil: "networkidle", timeout: 30000 })
-      .catch(() => {})
+    const userField = newPage.locator('#user_login, input[name="log"]')
+    const passField = newPage.locator('#user_pass, input[name="pwd"]')
+    const submitBtn = newPage.locator('#wp-submit, input[type="submit"]')
+
+    if ((await userField.count()) > 0 && (await passField.count()) > 0) {
+      await userField.fill("onboarding.india@growth99.com")
+      await passField.fill(wpPassword)
+      await Promise.all([
+        newPage.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {}),
+        submitBtn.click()
+      ])
+      // Wait for the admin bar or dashboard to signal a successful login
+      await newPage
+        .waitForSelector("#wpadminbar, .wrap", { timeout: 15000 })
+        .catch(() => {})
+    }
 
     if (onProgress) await onProgress(60, "Navigating to Plugins page...")
 

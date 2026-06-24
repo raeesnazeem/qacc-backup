@@ -798,6 +798,146 @@ router.post(
 )
 
 /**
+ * POST /api/runs/:id/retry-check
+ * Retry a specific check for a given run. Deletes existing findings for that check and enqueues jobs.
+ */
+router.post(
+  "/:id/retry-check",
+  clerkAuth,
+  requireRole("qa_engineer"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params
+    const { checkKey, wp_password } = req.body
+
+    try {
+      // 1. Delete existing findings for this checkKey
+      await supabase
+        .from("findings")
+        .delete()
+        .eq("run_id", id)
+        .eq("check_factor", checkKey)
+
+      // 2. Fetch run details
+      const { data: run } = await supabase
+        .from("qa_runs")
+        .select("project_id, site_url")
+        .eq("id", id)
+        .single()
+
+      if (!run) {
+        return res.status(404).json({ error: "Run not found" })
+      }
+
+      // 3. Fetch all pages for this run
+      const { data: pages } = await supabase
+        .from("pages")
+        .select("id, url, check_progress")
+        .eq("run_id", id)
+
+      const { qaQueue } = require("../lib/queue")
+
+      // 4. Enqueue jobs based on the checkKey
+      if (checkKey === "project_plan") {
+        await supabase.from("qa_runs").update({ status: "running" }).eq("id", id)
+        await qaQueue.add("check_project_plan", { runId: id, projectId: run.project_id, isRetry: true })
+      } else if (checkKey === "paid_media") {
+        await supabase.from("qa_runs").update({ status: "running" }).eq("id", id)
+        await qaQueue.add("check_paid_media", { runId: id, projectId: run.project_id, isRetry: true })
+      } else if (pages && pages.length > 0) {
+        // Filter pages for homepage-only checks so we don't queue redundant tasks
+        const homepageChecks = [
+          "privacy_policy",
+          "footer_logo",
+          "single_script",
+          "top_bar_sticky",
+          "favicon",
+          "chatbot_consultation",
+          "logo_chatbot",
+          "text_share",
+          "callnow_links",
+          "verify_plugin_updates",
+          "social_share_heading",
+          "url_tab_compare",
+        ]
+
+        let relevantPages = pages
+        if (homepageChecks.includes(checkKey)) {
+          relevantPages = relevantPages.filter((p) => {
+            const normalize = (u: string) => u.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "").toLowerCase()
+            return normalize(p.url) === normalize(run.site_url)
+          })
+          if (relevantPages.length === 0 && pages.length > 0) {
+            relevantPages = [pages[0]]
+          }
+        }
+
+        // Don't change run status or pages_processed for targeted check retry.
+        // The run stays "completed" so the UI keeps showing 100% for all other checks.
+        
+        // ONLY update check_progress for the specific check, so we don't drop progress for all other checks!
+        for (const page of relevantPages) {
+          const updatedCheckProgress = {
+            ...(page.check_progress || {}),
+            [checkKey]: { progress: 0, status: "processing", step: "Queued for retry..." }
+          }
+          await supabase.from("pages").update({ check_progress: updatedCheckProgress }).eq("id", page.id)
+          
+          // Delete the old finding so we don't get duplicates
+          await supabase.from("findings").delete().eq("run_id", id).eq("page_id", page.id).eq("check_factor", checkKey)
+        }
+
+        // Enqueue crawl_batch for the pages with overrideChecks
+        const BATCH_SIZE = 10
+        const chunks = []
+        for (let i = 0; i < relevantPages.length; i += BATCH_SIZE) {
+          chunks.push(relevantPages.slice(i, i + BATCH_SIZE))
+        }
+
+        const jobs = chunks.map((chunk) => {
+          if (chunk.length === 1) {
+            return {
+              name: "crawl_page",
+              data: {
+                runId: id,
+                pageId: chunk[0].id,
+                url: chunk[0].url,
+                overrideChecks: [checkKey],
+                wpPassword: wp_password
+              },
+              opts: {
+                attempts: 3,
+                backoff: { type: "exponential", delay: 5000 },
+              },
+            }
+          } else {
+            return {
+              name: "crawl_batch",
+              data: {
+                runId: id,
+                pages: chunk.map((p) => ({ id: p.id, url: p.url })),
+                overrideChecks: [checkKey],
+                wpPassword: wp_password
+              },
+              opts: {
+                attempts: 3,
+                backoff: { type: "exponential", delay: 5000 },
+                lockDuration: 600000,
+              },
+            }
+          }
+        })
+        await qaQueue.addBulk(jobs)
+      }
+
+      return res.json({ success: true, message: `Retrying check: ${checkKey}` })
+    } catch (error: any) {
+      console.error("[Retry Check Error]:", error)
+      return res.status(500).json({ error: error.message })
+    }
+  },
+)
+
+/**
  * DELETE /api/runs
  * Bulk delete QA runs.
  */
