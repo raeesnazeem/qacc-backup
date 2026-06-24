@@ -2089,8 +2089,9 @@ export const RunDetailPage = () => {
               ) : runGeneralFindings.length > 0 ? (
                 <FindingReviewPanel
                   findings={runGeneralFindings}
-                  generalFindings={[]}
+                  generalFindings={runGeneralFindings}
                   hideSummary={true}
+                  runId={runId!}
                   onSingleConfirm={handleConfirmFinding}
                   onSingleFalsePositive={handleFalsePositiveFinding}
                   onSingleCreateTask={(finding) => handleAddToStage([finding])}

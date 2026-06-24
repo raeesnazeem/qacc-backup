@@ -35,6 +35,8 @@ interface FindingReviewPanelProps {
   onAddToStage?: (findings: QAFinding[]) => void
   findingToTaskMap?: Record<string, { taskIds: string[]; assignedUsers: any[] }>
   hideSummary?: boolean
+  canAction?: boolean
+  runId?: string
 }
 
 const DonutChart = ({
@@ -109,9 +111,11 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
   onAddToStage,
   findingToTaskMap = {},
   hideSummary,
+  canAction: canActionProp,
+  runId,
 }) => {
   const { canDo } = useRole()
-  const canAction = canDo("qa_engineer")
+  const canAction = canActionProp !== undefined ? canActionProp : canDo("qa_engineer")
   const [selectedFactor, setSelectedFactor] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 

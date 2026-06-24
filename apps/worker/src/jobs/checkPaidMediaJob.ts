@@ -132,6 +132,15 @@ export async function processCheckPaidMediaJob(job: Job) {
         "Basecamp credentials missing. Skipping paid media check.",
       )
       if (isApiOnly) await updateProgress(100, "Skipped (No credentials)")
+      
+      findings.push({
+        check_factor: "paid_media",
+        severity: "medium",
+        title: "Paid Media Check Skipped",
+        description: "Basecamp credentials are not configured for this project. Please configure Basecamp settings to enable this check.",
+        status: "open",
+        ai_generated: false,
+      })
       // We don't return here so the run completion block at the bottom executes!
     } else {
       let decryptedToken: string

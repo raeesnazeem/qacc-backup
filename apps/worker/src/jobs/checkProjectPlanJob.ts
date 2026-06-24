@@ -44,6 +44,21 @@ export async function processCheckProjectPlanJob(job: Job) {
       { projectId },
       "No project settings found. Skipping Basecamp checks.",
     )
+
+    const { data: firstPage } = await supabase.from("pages").select("id").eq("run_id", runId).limit(1).single()
+    if (firstPage?.id) {
+      await supabase.from("findings").insert([{
+        check_factor: "project_plan",
+        severity: "medium",
+        title: "Project Plan Check Skipped",
+        description: "Project settings are missing. Please configure Basecamp settings to enable this check.",
+        status: "open",
+        ai_generated: false,
+        page_id: firstPage.id,
+        run_id: runId
+      }])
+    }
+
     if (isRetry) {
       await supabase.from("qa_runs").update({ status: "completed" }).eq("id", runId)
     }
@@ -62,6 +77,21 @@ export async function processCheckProjectPlanJob(job: Job) {
       { projectId },
       "Basecamp credentials not configured for this project. Skipping.",
     )
+
+    const { data: firstPage } = await supabase.from("pages").select("id").eq("run_id", runId).limit(1).single()
+    if (firstPage?.id) {
+      await supabase.from("findings").insert([{
+        check_factor: "project_plan",
+        severity: "medium",
+        title: "Project Plan Check Skipped",
+        description: "Basecamp credentials are not configured for this project. Please configure Basecamp settings to enable this check.",
+        status: "open",
+        ai_generated: false,
+        page_id: firstPage.id,
+        run_id: runId
+      }])
+    }
+
     if (isRetry) {
       await supabase.from("qa_runs").update({ status: "completed" }).eq("id", runId)
     }
