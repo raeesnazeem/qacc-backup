@@ -20,7 +20,7 @@ export const RegisterPage = () => {
             headerSubtitle: "text-slate-500",
             socialButtonsBlockButton:
               "border-slate-200 hover:bg-slate-50 text-slate-900 rounded-md",
-            formButtonPrimary: "btn-unified w-full !h-[38px] !text-sm",
+            formButtonPrimary: "bg-slate-900 hover:bg-slate-800 text-white w-full rounded-md !h-[38px] !text-sm transition-colors",
             footerActionLink: "text-accent hover:text-accent/80 font-semibold",
             formFieldLabel: "text-slate-700 font-medium",
             formFieldInput:
