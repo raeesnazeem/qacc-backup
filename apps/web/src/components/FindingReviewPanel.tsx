@@ -10,6 +10,7 @@ import {
   CheckCircle,
   ShieldAlert,
   Activity,
+  ListChecks,
 } from "lucide-react"
 import { useRole } from "../hooks/useRole"
 import { QAFinding } from "../api/runs.api"
@@ -115,9 +116,51 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
   runId,
 }) => {
   const { canDo } = useRole()
-  const canAction = canActionProp !== undefined ? canActionProp : canDo("qa_engineer")
+  const canAction =
+    canActionProp !== undefined ? canActionProp : canDo("qa_engineer")
   const [selectedFactor, setSelectedFactor] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const panelRef = React.useRef<HTMLDivElement>(null)
+  const [iconLeft, setIconLeft] = useState<number | null>(null)
+  const [showIcon, setShowIcon] = useState(false)
+
+  React.useEffect(() => {
+    const updatePosition = () => {
+      if (panelRef.current) {
+        const rect = panelRef.current.getBoundingClientRect()
+        const triggerPoint = window.innerHeight * 0.3
+        // Only show the icon when the finding cards section is actively passing the 30vh mark
+        setShowIcon(rect.top <= triggerPoint && rect.bottom >= triggerPoint)
+
+        // Find the sidebar's right edge dynamically to handle collapsed/expanded state
+        const sidebarEl = document.querySelector("aside")
+        const sidebarRight = sidebarEl
+          ? sidebarEl.getBoundingClientRect().right
+          : 256
+
+        // The enclosing box has 32px padding (p-8), so its actual border is 32px left of the panel content
+        const boxLeft = rect.left - 32
+
+        // Calculate exact center of the gap
+        const iconWidth = 38 // 18px icon + 10px padding on each side
+        const centerOfGap = (sidebarRight + boxLeft) / 2
+
+        // On desktop, place it perfectly in the center of the gap
+        if (window.innerWidth >= 768) {
+          setIconLeft(centerOfGap - iconWidth / 2)
+        } else {
+          setIconLeft(null)
+        }
+      }
+    }
+    updatePosition()
+    window.addEventListener("resize", updatePosition)
+    window.addEventListener("scroll", updatePosition)
+    return () => {
+      window.removeEventListener("resize", updatePosition)
+      window.removeEventListener("scroll", updatePosition)
+    }
+  }, [findings, generalFindings])
 
   // Reset filter and selection when findings change (indicating a page switch)
   React.useEffect(() => {
@@ -136,10 +179,10 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
       })
     }
     const total = allUniqueFindings.length
-    
+
     // Group findings by check_factor to apply status to all members of a group
     const checkFactorGroups: Record<string, typeof allUniqueFindings> = {}
-    allUniqueFindings.forEach(f => {
+    allUniqueFindings.forEach((f) => {
       if (!checkFactorGroups[f.check_factor]) {
         checkFactorGroups[f.check_factor] = []
       }
@@ -147,18 +190,31 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
     })
 
     const GENERAL_CHECK_FACTORS = [
-      "project_plan", "paid_media", "privacy_policy", "callnow_links", 
-      "hero_media", "footer_logo", "single_script", "top_bar_sticky", 
-      "favicon", "contact_form", "chatbot_consultation", "text_share", 
-      "dead_links", "learn_more_buttons", "url_tab_compare", 
-      "verify_plugin_updates", "social_share_heading", "logo_chatbot"
+      "project_plan",
+      "paid_media",
+      "privacy_policy",
+      "callnow_links",
+      "hero_media",
+      "footer_logo",
+      "single_script",
+      "top_bar_sticky",
+      "favicon",
+      "contact_form",
+      "chatbot_consultation",
+      "text_share",
+      "dead_links",
+      "learn_more_buttons",
+      "url_tab_compare",
+      "verify_plugin_updates",
+      "social_share_heading",
+      "logo_chatbot",
     ]
 
     const confirmed = allUniqueFindings.filter((f) => {
       const isGeneral = GENERAL_CHECK_FACTORS.includes(f.check_factor)
       if (isGeneral) {
         const group = checkFactorGroups[f.check_factor]
-        return group.some(g => {
+        return group.some((g) => {
           const hasTask = g.tasks && g.tasks.length > 0
           const isAssigned = !!findingToTaskMap[g.id]
           return g.status === "confirmed" || hasTask || isAssigned
@@ -169,16 +225,16 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
       const isAssigned = !!findingToTaskMap[f.id]
       return f.status === "confirmed" || hasTask || isAssigned
     }).length
-    
+
     const falsePositives = allUniqueFindings.filter((f) => {
       const isGeneral = GENERAL_CHECK_FACTORS.includes(f.check_factor)
       if (isGeneral) {
         const group = checkFactorGroups[f.check_factor]
-        return group.some(g => g.status === "false_positive")
+        return group.some((g) => g.status === "false_positive")
       }
       return f.status === "false_positive"
     }).length
-    
+
     const open = total - confirmed - falsePositives
     const resolved = confirmed + falsePositives
     return {
@@ -245,7 +301,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full space-y-8">
+    <div ref={panelRef} className="flex flex-col w-full space-y-8">
       {/* Summary Dashboard */}
       {!hideSummary && (
         <div className="bg-slate-200/10 dark:bg-[#1d2a31]/30 rounded-md p-8 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative group">
@@ -365,7 +421,11 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {generalFindings.map((finding) => (
-              <div key={finding.id} className="relative group/wrapper">
+              <div
+                id={`finding-card-${finding.id}`}
+                key={finding.id}
+                className="relative group/wrapper"
+              >
                 <FindingCard
                   key={finding.id}
                   finding={finding}
@@ -448,9 +508,75 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
       )}
 
       {/* Scrollable Findings List */}
+
+      {/* Jump to Check Dropdown */}
+      {[...(generalFindings || []), ...filteredFindings].length > 0 && (
+        <div className="w-full">
+          <div
+            className={`fixed top-[30vh] max-md:right-6 max-md:bottom-24 max-md:top-auto max-md:left-auto group z-[99999] transition-all duration-300 ${showIcon ? "opacity-100 pointer-events-auto scale-100" : "opacity-0 pointer-events-none scale-90"}`}
+            style={{ left: iconLeft !== null ? `${iconLeft}px` : undefined }}
+          >
+            <div className="relative p-2.5 bg-slate-900/90 dark:bg-[#1D2A31] rounded-full border border-emerald-600 dark:border-emerald-600 shadow-2xl cursor-pointer hover:bg-slate-800 dark:hover:bg-[#131D22] dark:hover:text-white transition-all hover:scale-110 active:scale-95 flex items-center justify-center">
+              <ListChecks size={18} className="text-accent" />
+              <select
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                title="Jump to Check"
+                onChange={(e) => {
+                  if (!e.target.value) return
+                  const allDisplayed = [
+                    ...(generalFindings || []),
+                    ...filteredFindings,
+                  ]
+                  const firstFinding = allDisplayed.find(
+                    (f) => f.check_factor === e.target.value,
+                  )
+                  if (firstFinding) {
+                    document
+                      .getElementById(`finding-card-${firstFinding.id}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }
+                  e.target.value = "" // reset so they can select again
+                }}
+              >
+                <option value="">Jump to a check...</option>
+                {Array.from(
+                  new Set(
+                    [...(generalFindings || []), ...filteredFindings].map(
+                      (f) => f.check_factor,
+                    ),
+                  ),
+                )
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((factor) => (
+                    <option key={factor} value={factor}>
+                      {factor
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            {/* Curved Arrow Pointing to Cards */}
+            <div className="absolute top-[80%] left-[45%] pointer-events-none opacity-80 hidden md:block">
+              <svg width="50" height="70" viewBox="0 0 50 70" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-emerald-500 drop-shadow-md">
+                <path d="M 0 0 C 0 40, 15 60, 42 65" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                <path d="M 36 57 L 48 66 L 36 68 Z" fill="currentColor" />
+              </svg>
+            </div>
+            <div className="absolute left-full max-md:right-full max-md:left-auto top-1/2 -translate-y-1/2 max-md:mr-3 lg:ml-3 px-2 py-1 bg-black text-white text-[10px] uppercase tracking-widest font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-800 shadow-xl">
+              Jump to Check
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
         {filteredFindings.map((finding) => (
-          <div key={finding.id} className="relative group/wrapper">
+          <div
+            id={`finding-card-${finding.id}`}
+            key={finding.id}
+            className="relative group/wrapper"
+          >
             <FindingCard
               key={finding.id}
               finding={finding}

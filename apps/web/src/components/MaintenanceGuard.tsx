@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 import { useRole } from "../hooks/useRole"
 import { useSystemSettings } from "../hooks/useSystemSettings"
 import { MaintenancePage } from "../pages/MaintenancePage"
@@ -6,6 +6,7 @@ import { MaintenancePage } from "../pages/MaintenancePage"
 export const MaintenanceGuard = () => {
   const { role } = useRole()
   const { systemSettings, isLoading } = useSystemSettings()
+  const location = useLocation()
 
   // Wait until settings are loaded to prevent flicker
   // If there's an error fetching settings, we can default to showing the app
@@ -18,7 +19,15 @@ export const MaintenanceGuard = () => {
   const isMaintenanceMode = systemSettings?.is_maintenance_mode ?? false
   const isSuperAdmin = role === "super_admin"
 
-  if (isMaintenanceMode && !isSuperAdmin) {
+  // Allow access to auth/onboarding pages even in maintenance mode
+  const isExcludedPath = [
+    "/login",
+    "/register",
+    "/onboarding",
+    "/sso-callback"
+  ].some(path => location.pathname.startsWith(path))
+
+  if (isMaintenanceMode && !isSuperAdmin && !isExcludedPath) {
     return <MaintenancePage />
   }
 

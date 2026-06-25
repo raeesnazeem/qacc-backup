@@ -376,7 +376,15 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                   if (!finding.description) return null
 
                   if (Array.isArray(links) && links.length > 0) {
-                    const displayLinks = links.slice(0, 3)
+                    const singleFoundOnLinks = links.filter((link: any) => {
+                      if (!link.found_on) return true;
+                      if (link.found_on.includes("<br>")) {
+                        return link.found_on.split("<br>").map((p: string) => p.trim()).filter(Boolean).length <= 1;
+                      }
+                      return true;
+                    });
+                    const displayCandidates = singleFoundOnLinks.length >= 3 ? singleFoundOnLinks : [...singleFoundOnLinks, ...links.filter((l: any) => !singleFoundOnLinks.includes(l))];
+                    const displayLinks = displayCandidates.slice(0, 3)
                     const hasMore = links.length > 3
                     return (
                       <div className="flex flex-col gap-2">
@@ -404,7 +412,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                                   key={idx}
                                   className="hover:bg-slate-50/50 dark:hover:bg-[#1d2a31]"
                                 >
-                                  <td className="px-3 py-2 break-all text-blue-500 min-w-[150px]">
+                                  <td className="px-3 py-2 align-top break-all text-blue-500 min-w-[150px]">
                                     <a
                                       href={link.url}
                                       target="_blank"
@@ -414,11 +422,11 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                                       {link.url}
                                     </a>
                                   </td>
-                                  <td className="px-3 py-2">{link.reason}</td>
-                                  <td className="px-3 py-2">
+                                  <td className="px-3 py-2 align-top">{link.reason}</td>
+                                  <td className="px-3 py-2 align-top">
                                     {link["Link text"] || link.link_text}
                                   </td>
-                                  <td className="px-3 py-2 break-all text-blue-500 min-w-[150px]">
+                                  <td className="px-3 py-2 align-top break-all text-blue-500 min-w-[150px]">
                                     {link.found_on ? (
                                       <a
                                         href={link.found_on}
@@ -640,7 +648,15 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
               if (!finding.description) return null
 
               if (Array.isArray(links) && links.length > 0) {
-                const displayLinks = links.slice(0, 3)
+                const singleFoundOnLinks = links.filter((link: any) => {
+                  if (!link.found_on) return true;
+                  if (link.found_on.includes("<br>")) {
+                    return link.found_on.split("<br>").map((p: string) => p.trim()).filter(Boolean).length <= 1;
+                  }
+                  return true;
+                });
+                const displayCandidates = singleFoundOnLinks.length >= 3 ? singleFoundOnLinks : [...singleFoundOnLinks, ...links.filter((l: any) => !singleFoundOnLinks.includes(l))];
+                const displayLinks = displayCandidates.slice(0, 3)
                 const hasMore = links.length > 3
                 return (
                   <div className="flex flex-col gap-2">
@@ -668,7 +684,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                               key={idx}
                               className="hover:bg-slate-50/50 dark:hover:bg-[#1d2a31]"
                             >
-                              <td className="px-3 py-2 break-all text-blue-500 min-w-[150px]">
+                              <td className="px-3 py-2 align-top break-all text-blue-500 min-w-[150px]">
                                 <a
                                   href={link.url}
                                   target="_blank"
@@ -678,11 +694,11 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                                   {link.url}
                                 </a>
                               </td>
-                              <td className="px-3 py-2">{link.reason}</td>
-                              <td className="px-3 py-2">
+                              <td className="px-3 py-2 align-top">{link.reason}</td>
+                              <td className="px-3 py-2 align-top">
                                 {link["Link text"] || link.link_text}
                               </td>
-                              <td className="px-3 py-2 break-all text-blue-500 min-w-[150px]">
+                              <td className="px-3 py-2 align-top break-all text-blue-500 min-w-[150px]">
                                 {renderFoundOn(link.found_on)}
                               </td>
                             </tr>
@@ -917,7 +933,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
             className="absolute inset-0 bg-transparent"
             onClick={() => setIsModalOpen(false)}
           />
-          <div className="relative w-full max-w-5xl bg-slate-50 dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md shadow-2xl overflow-hidden transition-all duration-200 flex flex-col max-h-[80vh]">
+          <div className="relative w-[90vw] max-w-[90vw] bg-slate-50 dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md shadow-2xl overflow-hidden transition-all duration-200 flex flex-col max-h-[80vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-[#1d2a31] flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <div className="p-1.5 bg-accent/10 dark:bg-accent/20 rounded-md text-accent">
@@ -942,16 +958,16 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                     <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest w-12 text-center">
                       #
                     </th>
-                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest w-[40%]">
                       URL
                     </th>
-                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest w-[10%]">
                       Reason
                     </th>
-                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest w-[10%]">
                       Link Text
                     </th>
-                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                    <th className="px-4 py-3 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest w-[40%]">
                       Found On
                     </th>
                   </tr>
@@ -962,10 +978,10 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                       key={idx}
                       className="hover:bg-slate-50/50 dark:hover:bg-[#131d22] transition-colors"
                     >
-                      <td className="px-4 py-3 text-center text-slate-400 dark:text-slate-500 font-bold">
+                      <td className="px-4 py-3 align-top text-center text-slate-400 dark:text-slate-500 font-bold">
                         {idx + 1}
                       </td>
-                      <td className="px-4 py-3 break-all text-blue-500 min-w-[200px]">
+                      <td className="px-4 py-3 align-top break-all text-blue-500 min-w-[200px]">
                         <a
                           href={link.url}
                           target="_blank"
@@ -975,11 +991,11 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                           {link.url}
                         </a>
                       </td>
-                      <td className="px-4 py-3 min-w-[150px]">{link.reason}</td>
-                      <td className="px-4 py-3 font-medium">
+                      <td className="px-4 py-3 align-top min-w-[150px]">{link.reason}</td>
+                      <td className="px-4 py-3 align-top font-medium">
                         {link["Link text"] || link.link_text}
                       </td>
-                      <td className="px-4 py-3 break-all text-blue-500 min-w-[200px]">
+                      <td className="px-4 py-3 align-top break-all text-blue-500 min-w-[200px]">
                         {renderFoundOn(link.found_on)}
                       </td>
                     </tr>
