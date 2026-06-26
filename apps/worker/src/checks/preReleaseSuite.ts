@@ -380,9 +380,18 @@ export async function checkFooterLogo(
         .goto(url, { waitUntil: "load", timeout: 30000 })
         .catch(() => {})
 
-      const footer = newPage
-        .locator('footer, div[class*="footer"], section[class*="footer"]')
-        .first()
+//      const footer = newPage
+//        .locator('footer, div[class*="footer"], section[class*="footer"]')
+//        .first()
+
+      let footer = newPage.locator("footer").first()
+      if ((await footer.count()) === 0) {
+        footer = newPage
+          .locator(
+            '.site-footer, .footer, #footer, [data-elementor-type="footer"]',
+          )
+          .first()
+      }
 
       if ((await footer.count()) > 0) {
         // Scroll the footer into view to trigger lazy loading of images

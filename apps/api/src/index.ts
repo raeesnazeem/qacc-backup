@@ -1,4 +1,20 @@
 import "dotenv/config"
+import fs from "fs"
+import path from "path"
+
+// Bootstrap GCP credentials from environment variable (for Dokploy / Docker deployments)
+// Must run before any @google-cloud/* SDK modules are initialised
+if (process.env.GCP_SERVICE_ACCOUNT_JSON) {
+  try {
+    const keyPath = path.join("/tmp", "gcp-key.json")
+    fs.writeFileSync(keyPath, process.env.GCP_SERVICE_ACCOUNT_JSON)
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath
+    console.log("Successfully loaded GCP credentials into:", keyPath)
+  } catch (err) {
+    console.error("Failed to write GCP credentials file:", err)
+  }
+}
+
 import express, { Request, Response, NextFunction } from "express"
 import helmet from "helmet"
 import cors from "cors"
