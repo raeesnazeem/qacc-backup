@@ -519,7 +519,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
             <div className="relative p-2.5 bg-slate-800 dark:bg-slate-800 rounded-full border-2 border-accent hover:border-accent active:border-accent shadow-2xl cursor-pointer hover:bg-slate-700 dark:hover:bg-slate-700 text-white transition-all flex items-center justify-center">
               <ListChecks size={18} className="text-accent" />
               <select
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer outline-none focus:outline-none focus:ring-0 border-none hover:border-none active:border-none"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer outline-none focus:outline-none focus:ring-0 border-none hover:border-none active:border-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 title="Jump to Check"
                 onChange={(e) => {
                   if (!e.target.value) return
@@ -538,7 +538,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
                   e.target.value = "" // reset so they can select again
                 }}
               >
-                <option value="">Jump to a check...</option>
+                <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Jump to a check...</option>
                 {Array.from(
                   new Set(
                     [...(generalFindings || []), ...filteredFindings].map(
@@ -548,7 +548,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
                 )
                   .sort((a, b) => a.localeCompare(b))
                   .map((factor) => (
-                    <option key={factor} value={factor}>
+                    <option key={factor} value={factor} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
                       {factor
                         .replace(/_/g, " ")
                         .replace(/\b\w/g, (c) => c.toUpperCase())}

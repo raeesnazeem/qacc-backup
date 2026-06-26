@@ -530,7 +530,7 @@ export async function processCrawlPageJob(job: Job) {
         }
 
         await Promise.all(checkPromises)
-        if (enabledChecks.includes("single_script")) {
+        if (enabledChecks.includes("single_script") && false /* Defer to end */) {
           checkPromises.push(
             checkSingleScript(pageUrl, runId, pageId, browser, async (p, m) => {
               await updateCheckProgress("single_script", p, m)
@@ -678,6 +678,18 @@ export async function processCrawlPageJob(job: Job) {
               },
             ).catch((e) => {
               logger.error("Social share heading check failed:", e)
+              return []
+            }),
+          )
+        }
+
+        await Promise.all(checkPromises)
+        if (enabledChecks.includes("single_script")) {
+          checkPromises.push(
+            checkSingleScript(pageUrl, runId, pageId, browser, async (p, m) => {
+              await updateCheckProgress("single_script", p, m)
+            }).catch((e) => {
+              logger.error("Single script check failed:", e)
               return []
             }),
           )

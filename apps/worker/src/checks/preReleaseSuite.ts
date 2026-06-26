@@ -456,7 +456,13 @@ export async function checkSingleScript(
   sharedBrowser?: any,
   onProgress?: (progress: number, message: string) => Promise<void>,
 ): Promise<Finding[]> {
-  const { chromium } = require("playwright")
+  const { chromium } = require("playwright-extra")
+  const stealth = require("puppeteer-extra-plugin-stealth")()
+  chromium.use(stealth)
+  
+  // Decouple from shared browser
+  sharedBrowser = undefined;
+
   const { uploadScreenshot } = require("../lib/supabaseStorage")
 
   let desktopUrl = ""
