@@ -1,4 +1,5 @@
-import { useParams, Link, useLocation, useNavigate } from "react-router-dom"
+import { createPortal } from "react-dom"
+import { useParams, Link, useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { useProject } from "../hooks/useProjects"
 import { QAFinding, QAPage } from "../api/runs.api"
 import { useAuthAxios } from "../lib/useAuthAxios"
@@ -60,6 +61,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import { useAiResultsStore } from "../store/aiResultsStore"
 import { SignOffTab } from "../components/SignOffTab"
+import { TasksTab } from "../components/TasksTab"
 import { supabase } from "../lib/supabase"
 
 export const RunDetailPage = () => {
@@ -114,6 +116,7 @@ export const RunDetailPage = () => {
     | "woocommerce"
     | "report"
     | "recordings"
+    | "tasks"
   >(() => {
     return (sessionStorage.getItem(`runTab_${runId}`) as any) || "overview"
   })
@@ -121,6 +124,24 @@ export const RunDetailPage = () => {
   useEffect(() => {
     if (activeTab) sessionStorage.setItem(`runTab_${runId}`, activeTab)
   }, [activeTab, runId])
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  useEffect(() => {
+    const t = searchParams.get("t")
+    if (t && t !== activeTab) {
+      setActiveTab(t as any)
+    }
+  }, [searchParams])
+
+  const handleTabChange = (newTab: any) => {
+    setActiveTab(newTab)
+    setSearchParams((prev) => {
+      prev.set("t", newTab)
+      return prev
+    })
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   const [recordingsSubTab, setRecordingsSubTab] = useState<"full" | "history">(
     "full",
@@ -134,6 +155,32 @@ export const RunDetailPage = () => {
   const [isLearnMoreModalOpen, setIsLearnMoreModalOpen] = useState(false)
 
   // Reset view to overview or specific tab when navigating
+  const [isTabsSticky, setIsTabsSticky] = useState(false)
+  const tabsMarkerRef = useRef<HTMLDivElement>(null)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById("header-portal"))
+  }, [])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsTabsSticky(!entry.isIntersecting)
+      },
+      { 
+        root: document.getElementById("main-scroll-container"),
+        threshold: 0 
+      },
+    )
+
+    if (tabsMarkerRef.current) {
+      observer.observe(tabsMarkerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
   useEffect(() => {
     if (location.hash === "#recordings") {
       setActiveTab("recordings")
@@ -735,7 +782,7 @@ export const RunDetailPage = () => {
       runGeneralFindings &&
       runGeneralFindings.length > 0
     ) {
-      setActiveTab("general")
+      handleTabChange("general")
       hasAutoNavigatedGeneralRef.current = true
     }
   }, [run?.status, runGeneralFindings])
@@ -853,16 +900,16 @@ export const RunDetailPage = () => {
     return runTasks.map((t: any) => t.id)
   }, [runTasks])
 
-  useEffect(() => {
-    if (activeTab === "report" && !location.state?.reportFixApplied) {
-      navigate(`/projects/${projectId}?tab=runs`, { replace: true })
-      setTimeout(() => {
-        navigate(`/projects/${projectId}/runs/${runId}`, {
-          state: { ...location.state, reportFixApplied: true },
-        })
-      }, 0)
-    }
-  }, [activeTab, location.state, navigate, projectId, runId])
+  // useEffect(() => {
+  //   if (activeTab === "report" && !location.state?.reportFixApplied) {
+  //     navigate(`/projects/${projectId}?tab=runs`, { replace: true })
+  //     setTimeout(() => {
+  //       navigate(`/projects/${projectId}/runs/${runId}`, {
+  //         state: { ...location.state, reportFixApplied: true },
+  //       })
+  //     }, 0)
+  //   }
+  // }, [activeTab, location.state, navigate, projectId, runId])
 
   const isLoading = isLoadingRun || isLoadingProject
 
@@ -1275,20 +1322,101 @@ export const RunDetailPage = () => {
         </Link>
       </div>
 
+      {isTabsSticky &&
+        portalTarget &&
+        createPortal(
+          <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-md border border-slate-200 dark:border-slate-700 w-max overflow-x-auto scrollbar-hide shadow-md backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200 mx-auto">
+            <button
+              onClick={() => handleTabChange("overview")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "overview"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <BarChart3 size={14} />
+              Overview
+            </button>
+            <button
+              onClick={() => handleTabChange("pages")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "pages"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <FileSearch size={14} />
+              Pages
+            </button>
+            <button
+              onClick={() => handleTabChange("general")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "general"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <ClipboardList size={14} />
+              General Findings
+            </button>
+            <button
+              onClick={() => handleTabChange("tasks")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "tasks"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <CheckSquare size={14} />
+              Tasks
+            </button>
+            <button
+              onClick={() => handleTabChange("recordings")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "recordings"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <Video size={14} />
+              Recordings
+            </button>
+            <button
+              onClick={() => handleTabChange("report")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "report"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <ClipboardList size={14} />
+              Sign Off
+            </button>
+          </div>,
+          document.getElementById("header-portal")!,
+        )}
+
       {/* Header */}
       <div className="flex flex-col space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link
-              to={
-                activeTab === "report"
-                  ? `/projects/${projectId}?tab=runs`
-                  : `/projects/${projectId}`
-              }
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                if (window.history.length > 2) {
+                  navigate(-1)
+                } else {
+                  navigate(
+                    activeTab === "report" || activeTab === "tasks"
+                      ? `/projects/${projectId}?tab=runs`
+                      : `/projects/${projectId}`
+                  )
+                }
+              }}
               className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-slate-600" />
-            </Link>
+            </button>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-200">
@@ -1472,10 +1600,15 @@ export const RunDetailPage = () => {
         )}
       </div>
 
+      {/* Tabs Marker */}
+      <div ref={tabsMarkerRef} className="h-1 w-full -mt-1" />
+
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700 w-full overflow-x-auto scrollbar-hide">
+      <div
+        className={`flex items-center gap-1 p-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700 w-full overflow-x-auto scrollbar-hide ${isTabsSticky ? "opacity-0 pointer-events-none" : ""}`}
+      >
         <button
-          onClick={() => setActiveTab("overview")}
+          onClick={() => handleTabChange("overview")}
           className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
             activeTab === "overview"
               ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
@@ -1486,7 +1619,7 @@ export const RunDetailPage = () => {
           Overview
         </button>
         <button
-          onClick={() => setActiveTab("pages")}
+          onClick={() => handleTabChange("pages")}
           className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
             activeTab === "pages"
               ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
@@ -1499,7 +1632,7 @@ export const RunDetailPage = () => {
         {findingsLoaded && (
           <>
             <button
-              onClick={() => setActiveTab("general")}
+              onClick={() => handleTabChange("general")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === "general"
                   ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
@@ -1511,7 +1644,7 @@ export const RunDetailPage = () => {
             </button>
             {pageFindings && pageFindings.length > 0 && (
               <button
-                onClick={() => setActiveTab("findings")}
+                onClick={() => handleTabChange("findings")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                   activeTab === "findings"
                     ? "bg-slate-50 text-slate-900 shadow-sm border border-slate-200"
@@ -1526,7 +1659,7 @@ export const RunDetailPage = () => {
         )}
 
         {/* <button
-          onClick={() => setActiveTab("visual_diff")}
+          onClick={() => handleTabChange("visual_diff")}
           className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
             activeTab === "visual_diff"
               ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
@@ -1538,7 +1671,7 @@ export const RunDetailPage = () => {
         </button> */}
         {run.is_woocommerce && (
           <button
-            onClick={() => setActiveTab("woocommerce")}
+            onClick={() => handleTabChange("woocommerce")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
               activeTab === "woocommerce"
                 ? "bg-slate-50 text-slate-900 shadow-sm border border-slate-200"
@@ -1559,7 +1692,28 @@ export const RunDetailPage = () => {
               safeDisplayProgress === 100 &&
               allRunTasksClosed)) && (
             <button
-              onClick={() => setActiveTab("recordings")}
+              onClick={() => handleTabChange("tasks")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === "tasks"
+                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+              }`}
+            >
+              <CheckSquare size={14} />
+              Tasks
+            </button>
+          )}
+
+        {(isRecordingVideo ||
+          (run as any)?.recording_status === "recording" ||
+          (run as any)?.recording_status === "completed" ||
+          (run as any)?.recording_video_urls) &&
+          (!isQaEngineer ||
+            (!project?.is_pre_release &&
+              safeDisplayProgress === 100 &&
+              allRunTasksClosed)) && (
+            <button
+              onClick={() => handleTabChange("recordings")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === "recordings"
                   ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
@@ -1573,7 +1727,7 @@ export const RunDetailPage = () => {
 
         {isSignOffVisible && (
           <button
-            onClick={() => setActiveTab("report")}
+            onClick={() => handleTabChange("report")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
               activeTab === "report"
                 ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
@@ -2553,7 +2707,7 @@ export const RunDetailPage = () => {
               displayStatus={displayStatus}
               onCheckClick={(checkKey) => {
                 setFilterCheckFactor(checkKey)
-                setActiveTab("pages")
+                handleTabChange("pages")
               }}
             />
           )}
@@ -2595,7 +2749,7 @@ export const RunDetailPage = () => {
               })}
               onPageSelect={(page) => {
                 setSelectedPageId(page.id)
-                setActiveTab("findings")
+                handleTabChange("findings")
               }}
               onManualScan={(page) => {
                 setSelectedManualPageId(page.id)
@@ -2855,7 +3009,7 @@ export const RunDetailPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setActiveTab("pages")}
+                    onClick={() => handleTabChange("pages")}
                     className="btn-unified btn-small"
                   >
                     Change Page
@@ -2944,7 +3098,7 @@ export const RunDetailPage = () => {
                 Intelligence Ready
               </p>
               <button
-                onClick={() => setActiveTab("pages")}
+                onClick={() => handleTabChange("pages")}
                 className="mt-4 text-[10px] font-bold text-accent uppercase tracking-widest hover:text-black transition-colors"
               >
                 Select a page to view findings
@@ -3046,6 +3200,10 @@ export const RunDetailPage = () => {
             <WooCommerceSection findings={runFindings || []} />
           )}
         </div>
+      )}
+
+      {activeTab === "tasks" && (
+        <TasksTab project={project as any} runId={runId!} />
       )}
 
       {activeTab === "report" && (

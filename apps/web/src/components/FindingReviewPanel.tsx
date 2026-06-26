@@ -513,7 +513,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
       {[...(generalFindings || []), ...filteredFindings].length > 0 && (
         <div className="w-full">
           <div
-            className={`fixed top-[30vh] max-md:right-6 max-md:bottom-24 max-md:top-auto max-md:left-auto group z-[99999] transition-all duration-300 ${showIcon ? "opacity-100 pointer-events-auto scale-100" : "opacity-0 pointer-events-none scale-90"}`}
+            className={`fixed top-[30vh] max-md:right-6 max-md:bottom-24 max-md:top-auto max-md:left-auto group z-[50] transition-all duration-300 ${showIcon ? "opacity-100 pointer-events-auto scale-100" : "opacity-0 pointer-events-none scale-90"}`}
             style={{ left: iconLeft !== null ? `${iconLeft}px` : undefined }}
           >
             <div className="relative p-2.5 bg-slate-900/90 dark:bg-[#1D2A31] rounded-full border border-emerald-600 dark:border-emerald-600 shadow-2xl cursor-pointer hover:bg-slate-800 dark:hover:bg-[#131D22] dark:hover:text-white transition-all hover:scale-110 active:scale-95 flex items-center justify-center">
@@ -558,8 +558,21 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
             </div>
             {/* Curved Arrow Pointing to Cards */}
             <div className="absolute top-[80%] left-[45%] pointer-events-none opacity-80 hidden md:block">
-              <svg width="50" height="70" viewBox="0 0 50 70" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-emerald-500 drop-shadow-md">
-                <path d="M 0 0 C 0 40, 15 60, 42 65" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              <svg
+                width="50"
+                height="70"
+                viewBox="0 0 50 70"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="text-emerald-500 drop-shadow-md"
+              >
+                <path
+                  d="M 0 0 C 0 40, 15 60, 42 65"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
                 <path d="M 36 57 L 48 66 L 36 68 Z" fill="currentColor" />
               </svg>
             </div>

@@ -1445,7 +1445,7 @@ export async function checkCallnowLinks(
       check_factor: "callnow_links",
       severity: "medium",
       title: "Verify Call Now Button & Links",
-      description: `Please verify the Call Now plugin setup and homepage links using the evidence screenshots.\n\nChecks to perform:\n- [ ] Call now installed\n- [ ] Number added\n- [ ] Visible in mobile view\n- [ ] Valid phone\n- [ ] Valid email\n- [ ] All links functional`,
+      description: `Please verify the Call Now plugin setup and homepage links using the evidence screenshots.`,
       screenshot_url: screenshotUrls,
       status: "open",
       ai_generated: false,
@@ -1726,8 +1726,10 @@ export async function checkPluginUpdates(
       await userField.fill("onboarding.india@growth99.com")
       await passField.fill(wpPassword)
       await Promise.all([
-        newPage.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {}),
-        submitBtn.click()
+        newPage
+          .waitForNavigation({ waitUntil: "domcontentloaded", timeout: 15000 })
+          .catch(() => {}),
+        submitBtn.click(),
       ])
       // Wait for the admin bar or dashboard to signal a successful login
       await newPage

@@ -16,6 +16,7 @@ export const UpdateProjectSchema = CreateProjectSchema.partial().extend({
   basecamp_todo_list_id: z.string().optional(),
   basecamp_post_todo_list_id: z.string().optional(),
   basecamp_api_token: z.string().optional(),
+  live_site_url: z.string().optional(),
 });
 
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;

@@ -61,7 +61,8 @@ export const useUpdateProject = (id: string) => {
 
   return useMutation({
     mutationFn: (data: UpdateProjectInput) => updateProject(axios, id, data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['projects', id], (old: any) => old ? { ...old, ...data } : old);
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', id] });
       toast.success('Project updated successfully');

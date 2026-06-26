@@ -24,7 +24,7 @@ export const SignOffTab = ({
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/50 pb-6">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-200 Capitalize">
-            Executive QA Report
+            QA Report
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-1">
             Summary and official sign-off for Run #{runId?.substring(0, 8)}
@@ -38,7 +38,19 @@ export const SignOffTab = ({
             <Download size={14} />
             Export PDF
           </button>
-          {run.status === "completed" && <SignOffButton runId={runId!} projectId={run.project_id} isSignedOff={run.sign_offs && run.sign_offs.length > 0} signOffDetails={run.sign_offs?.[0]} label={run.run_type === "pre_release" ? "Sign off Pre-release" : undefined} />}
+          {run.status === "completed" && (
+            <SignOffButton
+              runId={runId!}
+              projectId={run.project_id}
+              isSignedOff={run.sign_offs && run.sign_offs.length > 0}
+              signOffDetails={run.sign_offs?.[0]}
+              label={
+                run.run_type === "pre_release"
+                  ? "Sign off Pre-release"
+                  : undefined
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -79,8 +91,8 @@ export const SignOffTab = ({
                 {tasksTotal === 0
                   ? "No issues were generated during this run. The release is clean."
                   : tasksProgress === 100
-                  ? "All issues have been successfully resolved. The release is ready for sign-off."
-                  : `${tasksTotal - tasksClosed} issues require attention before this release can be signed off.`}
+                    ? "All issues have been successfully resolved. The release is ready for sign-off."
+                    : `${tasksTotal - tasksClosed} issues require attention before this release can be signed off.`}
               </p>
             </div>
 

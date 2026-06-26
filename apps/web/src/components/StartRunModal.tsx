@@ -42,7 +42,8 @@ export const StartRunModal = ({
   const { mutate: createRun, isPending: isCreating } = useCreateRun()
   const { mutate: startRun, isPending: isStarting } = useStartRun()
   const { isPending: isUpdating } = useUpdateRunStatus()
-  const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject(project.id)
+  const { mutate: updateProject, isPending: isUpdatingProject } =
+    useUpdateProject(project.id)
   const isBasecampLinked = !!project.basecamp_project_id
   const [linkProjectUrl, setLinkProjectUrl] = useState("")
   const [isUrlsExpanded, setIsUrlsExpanded] = useState(false)
@@ -59,8 +60,8 @@ export const StartRunModal = ({
     resolver: zodResolver(CreateRunSchema),
     defaultValues: {
       project_id: project.id,
-      run_type: "pre_release",
-      site_url: project.site_url,
+      run_type: project.is_pre_release ? "pre_release" : "post_release",
+      site_url: project.is_pre_release ? project.site_url : (project.live_site_url || project.site_url),
       figma_url: "",
       enabled_checks: [],
       is_woocommerce: project.is_woocommerce,
@@ -94,6 +95,13 @@ export const StartRunModal = ({
       setValue("selected_urls", fetchedUrls)
     }
   }, [fetchedUrls, setValue])
+
+  useEffect(() => {
+    if (isOpen) {
+      setValue("run_type", project.is_pre_release ? "pre_release" : "post_release");
+      setValue("site_url", project.is_pre_release ? project.site_url : (project.live_site_url || project.site_url));
+    }
+  }, [isOpen, project, setValue])
 
   const toggleUrl = (url: string) => {
     const newSelection = selectedUrls.includes(url)
@@ -198,7 +206,7 @@ export const StartRunModal = ({
 
   if (!isOpen) return null
 
-  const checkOptions = [
+  const PRE_RELEASE_CHECKS = [
     {
       id: "visual_regression",
       label: "Visual Regression",
@@ -244,7 +252,6 @@ export const StartRunModal = ({
       category: "general",
       enabled: true,
     },
-
     {
       id: "paid_media",
       label: "Paid Media Check",
@@ -323,6 +330,81 @@ export const StartRunModal = ({
     },
   ]
 
+  const POST_RELEASE_CHECKS = [
+    {
+      id: "visual_regression",
+      label: "Visual Regression",
+      description: "Compare layout against baseline or Figma",
+    },
+    {
+      id: "accessibility",
+      label: "Accessibility (a11y)",
+      description: "Check for WCAG compliance issues",
+    },
+    {
+      id: "console_errors",
+      label: "Console Errors",
+      description: "Detect JS errors and failed network requests",
+    },
+    {
+      id: "performance",
+      label: "Performance",
+      description: "Basic Lighthouse performance metrics",
+    },
+    {
+      id: "gsr_check",
+      label: "GSR",
+      description:
+        "check SERP results are correct and no descrepancies are found",
+    },
+    {
+      id: "accessibility_ada_check",
+      label: "Accessibility ADA Check",
+      description: "check ADA widget if its present. If so is it free or pro",
+    },
+    {
+      id: "two_way_text_setup",
+      label: "Two way text setup",
+      description:
+        "Check with product team to see if two-way text setup is done",
+    },
+    {
+      id: "grammarly_check",
+      label: "Grammarly Check",
+      description: "check for grammar and spelling issues",
+    },
+    {
+      id: "live_site_link_check",
+      label: "Live Site Link check",
+      description:
+        "Verify the live site link as per the order details or check with PM if different",
+    },
+    {
+      id: "beta_url_check",
+      label: "Beta URL check",
+      description: "check entire website for beta site url presence.",
+    },
+    {
+      id: "backup_size_check",
+      label: "Backup size Check",
+      description: "Verify Backup size is less than 2 GB",
+    },
+    {
+      id: "plugin_number_check",
+      label: "Plugin Number check",
+      description: "Check the total number of plugins for the website",
+    },
+    {
+      id: "plugin_update_check",
+      label: "Plugin update check",
+      description: "verify if all plugins are updated or not",
+    },
+  ]
+
+  const checkOptions = project.is_pre_release
+    ? PRE_RELEASE_CHECKS
+    : POST_RELEASE_CHECKS
+
   const FUNCTIONAL_CHECK_IDS = [
     "visual_regression",
     "accessibility",
@@ -363,9 +445,12 @@ export const StartRunModal = ({
               <AlertCircle className="w-12 h-12 text-yellow-500" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Basecamp Not Linked</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">
+                Basecamp Not Linked
+              </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                To start a QA run, this project must be linked to a Basecamp Project. Please enter the Project URL below.
+                To start a QA run, this project must be linked to a Basecamp
+                Project. Please enter the Project URL below.
               </p>
             </div>
             <div className="w-full max-w-sm space-y-4 mt-4">
@@ -380,13 +465,22 @@ export const StartRunModal = ({
                 type="button"
                 onClick={() => {
                   const numbers = linkProjectUrl.match(/\d+/g)
-                  const extractedId = numbers ? numbers[numbers.length - 1] : linkProjectUrl
-                  updateProject({ basecamp_project_id: extractedId, basecamp_account_id: '4023059' })
+                  const extractedId = numbers
+                    ? numbers[numbers.length - 1]
+                    : linkProjectUrl
+                  updateProject({
+                    basecamp_project_id: extractedId,
+                    basecamp_account_id: "4023059",
+                  })
                 }}
                 disabled={isUpdatingProject || !linkProjectUrl.trim()}
                 className="w-full flex justify-center items-center px-4 py-3 bg-accent text-white rounded-md font-bold text-sm tracking-wider uppercase hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
-                {isUpdatingProject ? <Loader2 className="w-5 h-5 animate-spin" /> : "Link Project"}
+                {isUpdatingProject ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "Link Project"
+                )}
               </button>
             </div>
           </div>
@@ -395,212 +489,288 @@ export const StartRunModal = ({
             onSubmit={handleSubmit(onSubmit)}
             className="flex flex-col min-h-0"
           >
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-            {/* Run Type */}
-            <div>
-              <label className="block text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Run Type
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                <label className="relative cursor-pointer">
-                  <input
-                    type="radio"
-                    {...register("run_type")}
-                    value="pre_release"
-                    className="sr-only peer"
-                  />
-                  <div className="p-1 border border-slate-200 dark:border-slate-700 rounded-md text-center peer-checked:border-accent peer-checked:bg-accent/5 dark:peer-checked:bg-accent/10 transition-all">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 peer-checked:text-accent">
-                      Pre-Release
-                    </span>
-                  </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {/* Run Type */}
+              <div>
+                <label className="block text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Run Type
                 </label>
-                <label className="relative cursor-not-allowed opacity-50">
-                  <input
-                    type="radio"
-                    {...register("run_type")}
-                    value="post_release"
-                    className="sr-only peer"
-                    disabled
-                  />
-                  <div className="p-1 border border-slate-200 dark:border-slate-700 rounded-md text-center peer-checked:border-accent peer-checked:bg-accent/5 dark:peer-checked:bg-accent/10 transition-all">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 peer-checked:text-accent">
-                      Post-Release
-                    </span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Site URL */}
-            <div>
-              <label className="block text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Target URL
-              </label>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400" />
-                <input
-                  {...register("site_url")}
-                  className="w-full bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-md pl-8 pr-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 focus:outline-none focus:bg-[#fcfcfc] dark:focus:bg-[#131d22] focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all"
-                />
-              </div>
-              {errors.site_url && (
-                <p className="mt-1.5 text-xs text-red-500 font-medium">
-                  {errors.site_url.message}
-                </p>
-              )}
-            </div>
-
-            {/* Figma URL */}
-            <div>
-              <label className="block text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Figma Design URL{" "}
-                <span className="text-slate-400 text-[8px] uppercase ml-1">
-                  (Optional)
-                </span>
-              </label>
-              <div className="relative opacity-50 cursor-not-allowed">
-                <Layout className="absolute left-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400" />
-                <input
-                  {...register("figma_url")}
-                  disabled
-                  placeholder="https://figma.com/file/..."
-                  className="w-full bg-[#F2F6FC] dark:bg-[#131d22] border border-slate-300 dark:border-slate-700 rounded-md pl-7 pr-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 cursor-not-allowed transition-all"
-                />
-              </div>
-
-              {errors.figma_url && (
-                <p className="mt-1.5 text-xs text-red-500 font-medium">
-                  {errors.figma_url.message}
-                </p>
-              )}
-            </div>
-
-            {/* URL Selection Accordion */}
-            <div className="border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent transition-all rounded-md overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setIsUrlsExpanded(!isUrlsExpanded)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] transition-colors"
-              >
-                <div className="flex items-center space-x-2">
-                  <Globe className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    Select Pages to Test ({selectedUrls.length}/
-                    {fetchedUrls?.length || 0})
-                  </span>
-                  {isFetchingUrls && (
-                    <Loader2 className="w-3 h-3 animate-spin text-accent" />
-                  )}
+                <div className="grid grid-cols-3 gap-3">
+                  <label
+                    className={`relative ${project.is_pre_release ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+                  >
+                    <input
+                      type="radio"
+                      {...register("run_type")}
+                      value="pre_release"
+                      className="sr-only peer"
+                      disabled={!project.is_pre_release}
+                    />
+                    <div className="p-1 border border-slate-200 dark:border-slate-700 rounded-md text-center peer-checked:border-accent peer-checked:bg-accent/5 dark:peer-checked:bg-accent/10 transition-all">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 peer-checked:text-accent">
+                        Pre-Release
+                      </span>
+                    </div>
+                  </label>
+                  <label
+                    className={`relative ${!project.is_pre_release ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+                  >
+                    <input
+                      type="radio"
+                      {...register("run_type")}
+                      value="post_release"
+                      className="sr-only peer"
+                      disabled={project.is_pre_release}
+                    />
+                    <div className="p-1 border border-slate-200 dark:border-slate-700 rounded-md text-center peer-checked:border-accent peer-checked:bg-accent/5 dark:peer-checked:bg-accent/10 transition-all">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 peer-checked:text-accent">
+                        Post-Release
+                      </span>
+                    </div>
+                  </label>
                 </div>
-                {isUrlsExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
+              </div>
 
-              {isUrlsExpanded && (
-                <div className="p-4 bg-[#fcfcfc] dark:bg-[#131d22] border-t border-slate-300 dark:border-slate-700 space-y-3">
-                  <div className="flex items-center space-x-4 pb-2 border-b border-slate-100 dark:border-slate-700/50">
+              {/* Site URL */}
+              <div>
+                <label className="block text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Target URL
+                </label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400" />
+                  <input
+                    {...register("site_url")}
+                    readOnly
+                    className="w-full bg-[#F2F6FC] dark:bg-[#131d22] border border-slate-300 dark:border-slate-700 rounded-md pl-8 pr-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 focus:outline-none cursor-default transition-all opacity-80"
+                  />
+                </div>
+                {errors.site_url && (
+                  <p className="mt-1.5 text-xs text-red-500 font-medium">
+                    {errors.site_url.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Figma URL */}
+              <div>
+                <label className="block text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Figma Design URL{" "}
+                  <span className="text-slate-400 text-[8px] uppercase ml-1">
+                    (Optional)
+                  </span>
+                </label>
+                <div className="relative opacity-50 cursor-not-allowed">
+                  <Layout className="absolute left-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400" />
+                  <input
+                    {...register("figma_url")}
+                    disabled
+                    placeholder="https://figma.com/file/..."
+                    className="w-full bg-[#F2F6FC] dark:bg-[#131d22] border border-slate-300 dark:border-slate-700 rounded-md pl-7 pr-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 cursor-not-allowed transition-all"
+                  />
+                </div>
+
+                {errors.figma_url && (
+                  <p className="mt-1.5 text-xs text-red-500 font-medium">
+                    {errors.figma_url.message}
+                  </p>
+                )}
+              </div>
+
+              {/* URL Selection Accordion */}
+              <div className="border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent transition-all rounded-md overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsUrlsExpanded(!isUrlsExpanded)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] transition-colors"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Globe className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      Select Pages to Test ({selectedUrls.length}/
+                      {fetchedUrls?.length || 0})
+                    </span>
+                    {isFetchingUrls && (
+                      <Loader2 className="w-3 h-3 animate-spin text-accent" />
+                    )}
+                  </div>
+                  {isUrlsExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
+                </button>
+
+                {isUrlsExpanded && (
+                  <div className="p-4 bg-[#fcfcfc] dark:bg-[#131d22] border-t border-slate-300 dark:border-slate-700 space-y-3">
+                    <div className="flex items-center space-x-4 pb-2 border-b border-slate-100 dark:border-slate-700/50">
+                      <button
+                        type="button"
+                        onClick={selectAll}
+                        className="text-[10px] font-bold uppercase tracking-wider text-accent hover:text-accent/80 transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={deselectAll}
+                        className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 transition-colors"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
+                      {!fetchedUrls && !isFetchingUrls && (
+                        <p className="text-xs text-slate-500 italic py-2">
+                          Enter a URL to fetch pages
+                        </p>
+                      )}
+                      {isFetchingUrls && (
+                        <div className="flex items-center justify-center py-4 space-x-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                          <span className="text-xs text-slate-500">
+                            Fetching pages...
+                          </span>
+                        </div>
+                      )}
+                      {fetchedUrls?.map((url) => (
+                        <div
+                          key={url}
+                          onClick={() => toggleUrl(url)}
+                          className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
+                        >
+                          {selectedUrls.includes(url) ? (
+                            <CheckSquare className="w-4 h-4 text-accent" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
+                          )}
+                          <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                            {url}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedUrls.length === 0 &&
+                      !isGeneralOnly &&
+                      !isFetchingUrls &&
+                      fetchedUrls && (
+                        <p className="text-[10px] text-red-500 font-medium italic">
+                          * At least one page must be selected
+                        </p>
+                      )}
+                  </div>
+                )}
+              </div>
+
+              {/* Enabled Checks */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                    Checks to Run
+                  </label>
+                  <div className="flex items-center space-x-3">
                     <button
                       type="button"
-                      onClick={selectAll}
-                      className="text-[10px] font-bold uppercase tracking-wider text-accent hover:text-accent/80 transition-colors"
+                      onClick={() =>
+                        setValue(
+                          "enabled_checks",
+                          checkOptions.map((c) => c.id),
+                        )
+                      }
+                      className="text-[9px] font-bold uppercase tracking-wider text-accent hover:text-accent/80 transition-colors"
                     >
                       Select All
                     </button>
+                    <span className="text-slate-300 dark:text-slate-600">
+                      |
+                    </span>
                     <button
                       type="button"
-                      onClick={deselectAll}
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 transition-colors"
+                      onClick={() => setValue("enabled_checks", [])}
+                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                     >
                       Deselect All
                     </button>
                   </div>
-
-                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
-                    {!fetchedUrls && !isFetchingUrls && (
-                      <p className="text-xs text-slate-500 italic py-2">
-                        Enter a URL to fetch pages
-                      </p>
-                    )}
-                    {isFetchingUrls && (
-                      <div className="flex items-center justify-center py-4 space-x-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                        <span className="text-xs text-slate-500">
-                          Fetching pages...
-                        </span>
-                      </div>
-                    )}
-                    {fetchedUrls?.map((url) => (
-                      <div
-                        key={url}
-                        onClick={() => toggleUrl(url)}
-                        className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
-                      >
-                        {selectedUrls.includes(url) ? (
-                          <CheckSquare className="w-4 h-4 text-accent" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
-                        )}
-                        <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                          {url}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {selectedUrls.length === 0 &&
-                    !isGeneralOnly &&
-                    !isFetchingUrls &&
-                    fetchedUrls && (
-                      <p className="text-[10px] text-red-500 font-medium italic">
-                        * At least one page must be selected
-                      </p>
-                    )}
                 </div>
-              )}
-            </div>
+                <div className="space-y-4 max-h-[45vh] bg-transparent overflow-y-auto pr-2 custom-scrollbar">
+                  {/* Functional Tests Group */}
+                  {role === "super_admin" && (
+                    <details className="group space-y-2">
+                      <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 group-open:bg-transparent dark:group-open:border dark:group-open:border-accent group-open:text-white dark:group-open:text-white cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:bg-accent hover:text-white dark:hover:bg-transparent dark:hover:border dark:hover:border-accent dark:hover:text-white transition-colors bg-[#F2F6FC] dark:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
+                        <span className="mr-3 text-[12px] text-slate-400 group-open:text-white/80 group-hover/summary:text-white/80 transition-transform duration-300 -rotate-90 group-open:rotate-0">
+                          ▼
+                        </span>
+                        <span className="flex-1 uppercase tracking-wider text-xs">
+                          Functional Tests
+                        </span>
+                        <div
+                          className="flex items-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={functionalChecks.every((c) =>
+                              enabledChecks.includes(c.id),
+                            )}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked
+                              if (isChecked) {
+                                const newChecks = Array.from(
+                                  new Set([
+                                    ...enabledChecks,
+                                    ...functionalChecks.map((c) => c.id),
+                                  ]),
+                                )
+                                setValue("enabled_checks", newChecks)
+                              } else {
+                                const newChecks = enabledChecks.filter(
+                                  (id) =>
+                                    !functionalChecks.find((c) => c.id === id),
+                                )
+                                setValue("enabled_checks", newChecks)
+                              }
+                            }}
+                            className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
+                          />
+                        </div>
+                      </summary>
+                      <div className="space-y-2 pt-1 pl-4">
+                        {functionalChecks.map((check) => (
+                          <label
+                            key={check.id}
+                            className="flex items-start p-3 border border-slate-100 dark:border-slate-700 rounded-md bg-slate-50/50 dark:bg-[#1d2a31]/30 hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
+                          >
+                            <div className="flex items-center h-5 mr-3">
+                              <input
+                                type="checkbox"
+                                {...register("enabled_checks")}
+                                value={check.id}
+                                className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
+                              />
+                            </div>
+                            <div>
+                              <div className="text-[11px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider">
+                                {check.label}
+                              </div>
+                              <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
+                                {check.description}
+                              </p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                  )}
 
-            {/* Enabled Checks */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                  Checks to Run
-                </label>
-                <div className="flex items-center space-x-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setValue(
-                        "enabled_checks",
-                        checkOptions.map((c) => c.id),
-                      )
-                    }
-                    className="text-[9px] font-bold uppercase tracking-wider text-accent hover:text-accent/80 transition-colors"
-                  >
-                    Select All
-                  </button>
-                  <span className="text-slate-300 dark:text-slate-600">|</span>
-                  <button
-                    type="button"
-                    onClick={() => setValue("enabled_checks", [])}
-                    className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                  >
-                    Deselect All
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-4 max-h-[45vh] bg-transparent overflow-y-auto pr-2 custom-scrollbar">
-                {/* Functional Tests Group */}
-                {role === "super_admin" && (
+                  {/* General Checks Group */}
                   <details className="group space-y-2" open>
-                    <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:text-accent transition-colors bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
-                      <span className="mr-3 text-[12px] text-slate-400 transition-transform duration-300 -rotate-90 group-open:rotate-0">
+                    <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 group-open:bg-transparent dark:group-open:border dark:group-open:border-accent group-open:text-white dark:group-open:text-white cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:border-accent hover:text-white dark:hover:bg-transparent dark:hover:border dark:hover:border-accent dark:hover:text-white transition-colors bg-[#F2F6FC] dark:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
+                      <span className="mr-3 text-[12px] text-slate-400 group-open:text-white/80 group-hover/summary:text-white/80 transition-transform duration-300 -rotate-90 group-open:rotate-0">
                         ▼
                       </span>
                       <span className="flex-1 uppercase tracking-wider text-xs">
-                        Functional Tests
+                        General Checks
                       </span>
                       <div
                         className="flex items-center"
@@ -608,23 +778,24 @@ export const StartRunModal = ({
                       >
                         <input
                           type="checkbox"
-                          checked={functionalChecks.every((c) =>
-                            enabledChecks.includes(c.id),
-                          )}
+                          checked={
+                            generalChecks.every((c) =>
+                              enabledChecks.includes(c.id),
+                            ) && generalChecks.length > 0
+                          }
                           onChange={(e) => {
                             const isChecked = e.target.checked
                             if (isChecked) {
                               const newChecks = Array.from(
                                 new Set([
                                   ...enabledChecks,
-                                  ...functionalChecks.map((c) => c.id),
+                                  ...generalChecks.map((c) => c.id),
                                 ]),
                               )
                               setValue("enabled_checks", newChecks)
                             } else {
                               const newChecks = enabledChecks.filter(
-                                (id) =>
-                                  !functionalChecks.find((c) => c.id === id),
+                                (id) => !generalChecks.find((c) => c.id === id),
                               )
                               setValue("enabled_checks", newChecks)
                             }
@@ -634,7 +805,7 @@ export const StartRunModal = ({
                       </div>
                     </summary>
                     <div className="space-y-2 pt-1 pl-4">
-                      {functionalChecks.map((check) => (
+                      {generalChecks.map((check) => (
                         <label
                           key={check.id}
                           className="flex items-start p-3 border border-slate-100 dark:border-slate-700 rounded-md bg-slate-50/50 dark:bg-[#1d2a31]/30 hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
@@ -659,151 +830,82 @@ export const StartRunModal = ({
                       ))}
                     </div>
                   </details>
-                )}
-
-                {/* General Checks Group */}
-                <details className="group space-y-2" open>
-                  <summary className="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center outline-none group/summary hover:text-accent transition-colors bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] p-3 rounded-md border border-slate-300 dark:border-slate-700">
-                    <span className="mr-3 text-[12px] text-slate-400 transition-transform duration-300 -rotate-90 group-open:rotate-0">
-                      ▼
-                    </span>
-                    <span className="flex-1 uppercase tracking-wider text-xs">
-                      General Checks
-                    </span>
-                    <div
-                      className="flex items-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          generalChecks.every((c) =>
-                            enabledChecks.includes(c.id),
-                          ) && generalChecks.length > 0
-                        }
-                        onChange={(e) => {
-                          const isChecked = e.target.checked
-                          if (isChecked) {
-                            const newChecks = Array.from(
-                              new Set([
-                                ...enabledChecks,
-                                ...generalChecks.map((c) => c.id),
-                              ]),
-                            )
-                            setValue("enabled_checks", newChecks)
-                          } else {
-                            const newChecks = enabledChecks.filter(
-                              (id) => !generalChecks.find((c) => c.id === id),
-                            )
-                            setValue("enabled_checks", newChecks)
-                          }
-                        }}
-                        className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
-                      />
-                    </div>
-                  </summary>
-                  <div className="space-y-2 pt-1 pl-4">
-                    {generalChecks.map((check) => (
-                      <label
-                        key={check.id}
-                        className="flex items-start p-3 border border-slate-100 dark:border-slate-700 rounded-md bg-slate-50/50 dark:bg-[#1d2a31]/30 hover:bg-slate-50 dark:hover:bg-[#1d2a31]/50 cursor-pointer transition-colors group"
-                      >
-                        <div className="flex items-center h-5 mr-3">
-                          <input
-                            type="checkbox"
-                            {...register("enabled_checks")}
-                            value={check.id}
-                            className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent accent-accent"
-                          />
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider">
-                            {check.label}
-                          </div>
-                          <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
-                            {check.description}
-                          </p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </details>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="shrink-0 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#131d22]/50">
-            {(requiresPassword || requiresLiveSiteUrl) && (
-              <div className="p-4 px-6 space-y-4 border-b border-slate-100 dark:border-slate-800">
-                {requiresPassword && (
-                  <div className="p-4 bg-white dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      WordPress Admin Password Required
-                    </label>
-                    <p className="text-[10px] text-slate-500 mb-3 font-medium">
-                      One or more selected checks require access to the
-                      WordPress backend. Username will be set to
-                      onboarding.india@growth99.com
-                    </p>
-                    <input
-                      type="password"
-                      {...register("wp_password")}
-                      placeholder="Enter today's WP password..."
-                      className="w-full bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-md px-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 focus:outline-none focus:bg-[#fcfcfc] dark:focus:bg-[#131d22] focus:border-accent transition-all"
-                    />
-                  </div>
-                )}
+            <div className="shrink-0 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#131d22]/50">
+              {(requiresPassword || requiresLiveSiteUrl) && (
+                <div className="p-4 px-6 space-y-4 border-b border-slate-100 dark:border-slate-800">
+                  {requiresPassword && (
+                    <div className="p-4 bg-white dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        WordPress Admin Password Required
+                      </label>
+                      <p className="text-[10px] text-slate-500 mb-3 font-medium">
+                        One or more selected checks require access to the
+                        WordPress backend. Username will be set to
+                        onboarding.india@growth99.com
+                      </p>
+                      <input
+                        type="password"
+                        {...register("wp_password")}
+                        placeholder="Enter today's WP password..."
+                        className="w-full bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-md px-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 focus:outline-none focus:bg-[#fcfcfc] dark:focus:bg-[#131d22] focus:border-accent transition-all"
+                      />
+                    </div>
+                  )}
 
-                {requiresLiveSiteUrl && (
-                  <div className="p-4 bg-white dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md">
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Client's Live Site URL — Required
-                    </label>
-                    <p className="text-[10px] text-slate-500 mb-3 font-medium">
-                      Enter the client's CURRENT live website URL. We will
-                      compare all pages from this site against our dev site.
-                    </p>
-                    <input
-                      type="url"
-                      value={liveSiteUrl}
-                      onChange={(e) => setLiveSiteUrl(e.target.value)}
-                      placeholder="https://www.clientlivesite.com"
-                      className="w-full bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-md px-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 focus:outline-none focus:bg-[#fcfcfc] dark:focus:bg-[#131d22] focus:border-accent transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="shrink-0 p-4 px-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#131d22]/50 flex space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-unified-secondary flex-1 dark:bg-[#1D2A31] dark:border-slate-800 dark:hover:bg-[#1d2a31] dark:text-slate-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={
-                isPending || (selectedUrls.length === 0 && !isGeneralOnly)
-              }
-              className="btn-unified flex-[2] flex items-center justify-center space-x-2"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Starting...</span>
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="w-4 h-4" />
-                  <span>Start Run</span>
-                </>
+                  {requiresLiveSiteUrl && (
+                    <div className="p-4 bg-white dark:bg-[#1d2a31] border border-slate-200 dark:border-slate-700 rounded-md">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Client's Live Site URL — Required
+                      </label>
+                      <p className="text-[10px] text-slate-500 mb-3 font-medium">
+                        Enter the client's CURRENT live website URL. We will
+                        compare all pages from this site against our dev site.
+                      </p>
+                      <input
+                        type="url"
+                        value={liveSiteUrl}
+                        onChange={(e) => setLiveSiteUrl(e.target.value)}
+                        placeholder="https://www.clientlivesite.com"
+                        className="w-full bg-[#F2F6FC] dark:bg-[#131d22] hover:bg-[#fcfcfc] dark:hover:bg-[#131d22] border border-slate-300 dark:border-slate-700 hover:border-accent dark:hover:border-accent rounded-md px-4 py-1.5 text-[13px] text-slate-900 dark:text-slate-200 focus:outline-none focus:bg-[#fcfcfc] dark:focus:bg-[#131d22] focus:border-accent transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
-          </div>
+            </div>
+
+            <div className="shrink-0 p-4 px-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#131d22]/50 flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn-unified-secondary flex-1 dark:bg-[#1D2A31] dark:border-slate-800 dark:hover:bg-[#1d2a31] dark:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  isPending || (selectedUrls.length === 0 && !isGeneralOnly)
+                }
+                className="btn-unified flex-[2] flex items-center justify-center space-x-2"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Starting...</span>
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="w-4 h-4" />
+                    <span>Start Run</span>
+                  </>
+                )}
+              </button>
+            </div>
           </form>
         )}
       </div>

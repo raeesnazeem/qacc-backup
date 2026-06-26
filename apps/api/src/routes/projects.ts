@@ -461,6 +461,10 @@ router.patch(
             req.body.is_pre_release !== undefined
               ? req.body.is_pre_release
               : undefined,
+          live_site_url:
+            req.body.live_site_url !== undefined
+              ? req.body.live_site_url
+              : undefined,
           status: req.body.status || "active",
         })
         .eq("id", id)

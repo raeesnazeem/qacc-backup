@@ -33,6 +33,7 @@ import { Task } from "../api/tasks.api"
 
 interface TasksTabProps {
   project?: ProjectWithMembers
+  runId?: string
 }
 
 const getTaskStatusColor = (status: string) => {
@@ -50,7 +51,7 @@ const getTaskStatusColor = (status: string) => {
   }
 }
 
-export const TasksTab = ({ project }: TasksTabProps) => {
+export const TasksTab = ({ project, runId }: TasksTabProps) => {
   const { data: tasksData, isLoading } = useTasks({
     projectId: project?.id,
     limit: 1000,
@@ -58,7 +59,7 @@ export const TasksTab = ({ project }: TasksTabProps) => {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const taskIdParam = searchParams.get("taskId")
-  const runIdParam = searchParams.get("runId")
+  const runIdParam = runId || searchParams.get("runId")
 
   const tasks = (tasksData?.data || []).filter((task: any) => {
     const isNotFeedback = !task.title?.includes("[Feedback]")

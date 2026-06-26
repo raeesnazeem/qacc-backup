@@ -156,11 +156,11 @@ export const AppLayout = () => {
     <div className="flex h-screen bg-bg-main dark:bg-[#131D22] font-sans">
       {/* Sidebar */}
       <aside
-        className={`${isCollapsed ? "w-20" : "w-64"} bg-slate-50 dark:bg-[#0B151B] text-slate-900 dark:text-slate-100 flex flex-col border-r border-slate-300/50 dark:border-slate-800 transition-all duration-300 relative`}
+        className={`${isCollapsed ? "w-20" : "w-64"} bg-slate-50 dark:bg-[#0B151B] text-slate-900 dark:text-slate-100 flex flex-col border-r border-slate-300/50 dark:border-slate-800 transition-all duration-300 relative z-[60]`}
       >
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-6 bg-[#e2e8f0] dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full p-1 z-20 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+          className="absolute -right-3 top-6 bg-[#e2e8f0] dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full p-1 z-[60] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
         >
           {isCollapsed ? (
             <PanelLeftOpen className="w-4 h-4 text-slate-500" />
@@ -292,7 +292,7 @@ export const AppLayout = () => {
             )}
           </div> */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-16 bg-slate-50 dark:bg-[#0B151B] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shadow-sm z-49">
+        <header className="h-16 bg-slate-50 dark:bg-[#0B151B] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shadow-sm z-50">
           <div className="flex items-center space-x-2">
             {!isLoading && role && (
               <div className="relative">
@@ -385,6 +385,8 @@ export const AppLayout = () => {
             )}
           </div>
 
+          <div id="header-portal" className="flex-1 flex justify-center mx-4 empty:hidden" />
+
           <div className="flex items-center space-x-6">
             <ActiveUsersDropdown />
             
@@ -421,7 +423,7 @@ export const AppLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-8 bg-bg-main dark:bg-[#131D22]">
+        <main id="main-scroll-container" className="flex-1 overflow-auto p-8 bg-bg-main dark:bg-[#131D22]">
           <Outlet />
         </main>
         {isAdmin && <ChatSidebar />}

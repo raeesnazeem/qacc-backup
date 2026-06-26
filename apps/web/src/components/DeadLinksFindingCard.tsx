@@ -65,6 +65,27 @@ const CHECK_FACTOR_ICONS: Record<string, React.ReactNode> = {
   dead_links: <Globe size={14} className="text-accent" />,
 }
 
+const getUrlCount = (contextText: string | null | undefined) => {
+  if (!contextText) return 0
+  
+  const getMaximumMatch = (regex: RegExp) => {
+    const matches = Array.from(contextText.matchAll(regex))
+    if (matches.length === 0) return null
+    return Math.max(...matches.map(m => parseInt(m[1], 10)))
+  }
+
+  const uniqueCount = getMaximumMatch(/Total unique URLs checked in run so far:\s*(\d+)/g)
+  if (uniqueCount !== null && uniqueCount > 0) return uniqueCount
+  
+  const extractedCount = getMaximumMatch(/URLs extracted from this page:\s*(\d+)/g)
+  if (extractedCount !== null && extractedCount > 0) return extractedCount
+  
+  const totalCount = getMaximumMatch(/Total URLs checked in run so far:\s*(\d+)/g)
+  if (totalCount !== null && totalCount > 0) return totalCount
+  
+  return 0
+}
+
 export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
   finding,
   pageScreenshots,
@@ -164,7 +185,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
     }
   }, [finding.description])
 
-  const renderFoundOn = (text: string) => {
+  const renderFoundOn = (text: string, showAbsolutePath = false) => {
     if (!text) return "-"
     
     // Check if it's our new consolidated format with <br> and markdown links
@@ -177,7 +198,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
             if (match) {
               return (
                 <a key={i} href={match[2]} target="_blank" rel="noreferrer" className="hover:underline text-blue-500 block">
-                  {match[1]}
+                  {showAbsolutePath ? match[2] : match[1]}
                 </a>
               )
             }
@@ -359,15 +380,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                 {(finding.context_text?.includes("Total unique URLs checked") || finding.context_text?.includes("URLs extracted from this page")) && (
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-600 border border-emerald-200 uppercase">
-                      {Math.max(
-                        0,
-                        ...Array.from(
-                          finding.context_text.matchAll(
-                            /(?:Total unique URLs checked in run so far:|Total URLs checked in run so far:|URLs extracted from this page:)\s*(\d+)/g,
-                          ),
-                          (m) => parseInt(m[1], 10),
-                        ),
-                      )}{" "}
+                      {getUrlCount(finding.context_text)}{" "}
                       URLs Scanned
                     </span>
                   </div>
@@ -629,15 +642,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
           {(finding.context_text?.includes("Total unique URLs checked") || finding.context_text?.includes("URLs extracted from this page")) && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-600 border border-emerald-200 uppercase">
-                {Math.max(
-                  0,
-                  ...Array.from(
-                    finding.context_text.matchAll(
-                      /(?:Total unique URLs checked in run so far:|Total URLs checked in run so far:|URLs extracted from this page:)\s*(\d+)/g,
-                    ),
-                    (m) => parseInt(m[1], 10),
-                  ),
-                )}{" "}
+                {getUrlCount(finding.context_text)}{" "}
                 URLs Scanned
               </span>
             </div>
@@ -996,7 +1001,7 @@ export const DeadLinksFindingCard: React.FC<FindingCardProps> = ({
                         {link["Link text"] || link.link_text}
                       </td>
                       <td className="px-4 py-3 align-top break-all text-blue-500 min-w-[200px]">
-                        {renderFoundOn(link.found_on)}
+                        {renderFoundOn(link.found_on, true)}
                       </td>
                     </tr>
                   ))}

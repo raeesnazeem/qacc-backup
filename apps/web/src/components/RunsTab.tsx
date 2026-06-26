@@ -111,7 +111,14 @@ export const RunsTab = ({ project }: RunsTabProps) => {
   const unpinnedRuns = runsData?.data?.filter((run) => !run.is_pinned) || []
 
   useEffect(() => {
-    if (!runsData || !runsData.data || isDeletingLimit || showLimitModal || isFetching) return
+    if (
+      !runsData ||
+      !runsData.data ||
+      isDeletingLimit ||
+      showLimitModal ||
+      isFetching
+    )
+      return
 
     if (unpinnedRuns.length > 3) {
       const toDelete = unpinnedRuns.slice(3).map((run) => run.id)
@@ -121,7 +128,7 @@ export const RunsTab = ({ project }: RunsTabProps) => {
         setShowLimitModal(true)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runsData, isDeletingLimit, showLimitModal, isFetching])
 
   const handleConfirmLimitDelete = () => {
@@ -226,18 +233,22 @@ export const RunsTab = ({ project }: RunsTabProps) => {
         onSuccess: () => {
           // Then pin the new one
           togglePinRun.mutate(
-            { runId: pendingPinRunId, is_pinned: true, custom_name: pinCustomName },
+            {
+              runId: pendingPinRunId,
+              is_pinned: true,
+              custom_name: pinCustomName,
+            },
             {
               onSuccess: () => {
                 setShowPinLimitModal(false)
                 setPendingPinRunId(null)
                 setRunToReplaceId(null)
                 setPinCustomName("")
-              }
-            }
+              },
+            },
           )
-        }
-      }
+        },
+      },
     )
   }
 
@@ -454,23 +465,29 @@ export const RunsTab = ({ project }: RunsTabProps) => {
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-4">
+                    <td colSpan={8} className="px-6 py-4">
                       <div className="h-10 bg-slate-100 dark:bg-[#131d22] rounded-md w-full"></div>
                     </td>
                   </tr>
                 ))
               ) : unpinnedRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <div className="p-3 bg-slate-100 dark:bg-[#131d22] rounded-full mb-3">
                         <History className="w-6 h-6 text-slate-400" />
                       </div>
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-200">
-                        No runs recorded yet
+                        Oops! No Records yet
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Start your first QA session to see results here.
+                        Start your{" "}
+                        {pinnedRunsData &&
+                        pinnedRunsData.data &&
+                        pinnedRunsData.data.length > 0
+                          ? "next"
+                          : "first"}{" "}
+                        QA session to see results here.
                       </p>
                     </div>
                   </td>
@@ -676,7 +693,9 @@ export const RunsTab = ({ project }: RunsTabProps) => {
               Limit Exceeded
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 text-center mb-6">
-              You have exceeded the limit of 3 unpinned QA runs. You must delete older runs to continue, keeping only the latest 3 unpinned records.
+              You have exceeded the limit of 3 unpinned QA runs. You must delete
+              older runs to continue, keeping only the latest 3 unpinned
+              records.
             </p>
             <div className="flex justify-center">
               {isDeletingLimit ? (
@@ -745,9 +764,10 @@ export const RunsTab = ({ project }: RunsTabProps) => {
               Pin Limit Reached
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-              You can only have up to 3 pinned runs. Please select an existing pinned run to replace, and enter a name for the new one.
+              You can only have up to 3 pinned runs. Please select an existing
+              pinned run to replace, and enter a name for the new one.
             </p>
-            
+
             <input
               type="text"
               autoFocus
@@ -758,20 +778,26 @@ export const RunsTab = ({ project }: RunsTabProps) => {
             />
 
             <div className="space-y-2 mb-6">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select run to replace:</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Select run to replace:
+              </p>
               {pinnedRunsData?.data?.map((run) => (
-                <div 
+                <div
                   key={run.id}
                   onClick={() => setRunToReplaceId(run.id)}
                   className={`p-3 rounded-md border cursor-pointer transition-colors ${
-                    runToReplaceId === run.id 
-                      ? "bg-pink-50 border-pink-500 dark:bg-pink-900/30 dark:border-pink-500" 
+                    runToReplaceId === run.id
+                      ? "bg-pink-50 border-pink-500 dark:bg-pink-900/30 dark:border-pink-500"
                       : "bg-white border-slate-200 dark:bg-[#131d22] dark:border-slate-700 hover:border-pink-300/50 dark:hover:border-pink-700/50"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{run.custom_name}</span>
-                    <span className="text-xs text-slate-500">#{run.id.slice(0, 8)}</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                      {run.custom_name}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      #{run.id.slice(0, 8)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -791,7 +817,11 @@ export const RunsTab = ({ project }: RunsTabProps) => {
               </button>
               <button
                 onClick={handleConfirmReplacePin}
-                disabled={!runToReplaceId || !pinCustomName.trim() || togglePinRun.isPending}
+                disabled={
+                  !runToReplaceId ||
+                  !pinCustomName.trim() ||
+                  togglePinRun.isPending
+                }
                 className="px-4 py-2 text-sm font-bold text-white bg-accent hover:bg-accent/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {togglePinRun.isPending ? "Replacing..." : "Replace & Pin"}

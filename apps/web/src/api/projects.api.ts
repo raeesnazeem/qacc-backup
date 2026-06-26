@@ -5,6 +5,7 @@ export interface Project {
   id: string;
   name: string;
   site_url: string;
+  live_site_url?: string | null;
   client_name?: string;
   is_woocommerce: boolean;
   is_pre_release: boolean;

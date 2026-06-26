@@ -6,7 +6,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom"
-import { useProject } from "../hooks/useProjects"
+import { useProject, useUpdateProject } from "../hooks/useProjects"
 import { useBasecampPeople } from "../hooks/useBasecampPeople"
 import {
   Globe,
@@ -38,11 +38,35 @@ export const ProjectDetailPage = () => {
   const activeTab = searchParams.get("tab") || "overview"
   const { canDo, isDeveloper } = useRole()
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
+  const [isLiveSiteModalOpen, setIsLiveSiteModalOpen] = useState(false)
+  const [liveSiteUrlInput, setLiveSiteUrlInput] = useState("")
   const location = useLocation()
   const navigate = useNavigate()
 
   const { data: project, isLoading, isError, error } = useProject(id!)
+  const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject(id!)
   useBasecampPeople(id)
+
+  const handleStartRunClick = () => {
+    if (project && !project.is_pre_release && !project.live_site_url) {
+      setIsLiveSiteModalOpen(true)
+    } else {
+      setIsRunModalOpen(true)
+    }
+  }
+
+  const handleLiveSiteUrlSubmit = () => {
+    if (!liveSiteUrlInput.trim()) return;
+    updateProject(
+      { live_site_url: liveSiteUrlInput },
+      {
+        onSuccess: () => {
+          setIsLiveSiteModalOpen(false)
+          setIsRunModalOpen(true)
+        }
+      }
+    )
+  }
 
   const setTab = (tab: string) => {
     setSearchParams({ tab })
@@ -320,7 +344,7 @@ export const ProjectDetailPage = () => {
           <div className="flex items-center space-x-3">
             <CanDo role="qa_engineer">
               <button
-                onClick={() => setIsRunModalOpen(true)}
+                onClick={handleStartRunClick}
                 className="btn-unified"
               >
                 Run New Check
@@ -362,7 +386,7 @@ export const ProjectDetailPage = () => {
         {activeTab === "overview" && (
           <ProjectOverviewTab
             project={project}
-            onStartRun={() => setIsRunModalOpen(true)}
+            onStartRun={handleStartRunClick}
           />
         )}
         {activeTab === "runs" && <RunsTab project={project} />}
@@ -376,6 +400,46 @@ export const ProjectDetailPage = () => {
         isOpen={isRunModalOpen}
         onClose={() => setIsRunModalOpen(false)}
       />
+
+      {isLiveSiteModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-slate-50 dark:bg-[#0B151B] border border-slate-200 dark:border-slate-800 rounded-md p-6 max-w-md w-full shadow-xl relative">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">
+              Enter Live Site URL
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Please provide the live site URL for post-release checks.
+            </p>
+            <input
+              type="url"
+              value={liveSiteUrlInput}
+              onChange={(e) => setLiveSiteUrlInput(e.target.value)}
+              placeholder="https://example.com"
+              className="w-full bg-[#F2F6FC] dark:bg-[#131d22] border border-slate-300 dark:border-slate-700 rounded-md px-4 py-2.5 text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-accent transition-colors mb-6"
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setIsLiveSiteModalOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+                disabled={isUpdatingProject}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLiveSiteUrlSubmit}
+                disabled={!liveSiteUrlInput.trim() || isUpdatingProject}
+                className="flex items-center px-4 py-2 bg-accent text-white rounded-md text-sm font-bold tracking-wider hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isUpdatingProject ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Save & Continue"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
