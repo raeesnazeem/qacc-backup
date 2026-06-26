@@ -1353,7 +1353,7 @@ export const RunDetailPage = () => {
               <BarChart3 size={14} />
               Overview
             </button>
-            <button
+            {/* <button
               onClick={() => handleTabChange("pages")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === "pages"
@@ -1363,7 +1363,7 @@ export const RunDetailPage = () => {
             >
               <FileSearch size={14} />
               Pages
-            </button>
+            </button> */}
             <button
               onClick={() => handleTabChange("general")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
@@ -1634,7 +1634,7 @@ export const RunDetailPage = () => {
           <BarChart3 size={14} />
           Overview
         </button>
-        <button
+        {/* <button
           onClick={() => handleTabChange("pages")}
           className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
             activeTab === "pages"
@@ -1644,7 +1644,7 @@ export const RunDetailPage = () => {
         >
           <FileSearch size={14} />
           Pages
-        </button>
+        </button> */}
         {findingsLoaded && (
           <>
             <button

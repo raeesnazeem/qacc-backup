@@ -182,7 +182,7 @@ export const ProjectDetailPage = () => {
   const allTabs = [
     {
       id: "overview",
-      label: "Overview",
+      label: "Details",
       icon: LayoutDashboard,
       minRole: "developer",
     },
