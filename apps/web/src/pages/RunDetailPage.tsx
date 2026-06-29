@@ -76,7 +76,7 @@ export const RunDetailPage = () => {
   const navigate = useNavigate()
   const axios = useAuthAxios()
   const updateStatus = useUpdateRunStatus()
-  const { canDo, isAdmin, isQaEngineer } = useRole()
+  const { canDo, isAdmin, isQaEngineer, role } = useRole()
   const aiResultsMap = useAiResultsStore((state) => state.aiResultsMap)
   const { clearAllGalleries, galleryImages: allGalleryImages } =
     useGalleryStore()
@@ -1283,9 +1283,9 @@ export const RunDetailPage = () => {
       ? runTasks.every((t: any) => t.status === "closed")
       : true
 
-  const isSignOffVisible = isPreRelease
+  const isSignOffVisible = role === "super_admin" && (isPreRelease
     ? allRunTasksClosed && safeDisplayProgress === 100
-    : safeDisplayProgress === 100
+    : safeDisplayProgress === 100)
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-200">
@@ -1397,17 +1397,19 @@ export const RunDetailPage = () => {
               <Video size={14} />
               Recordings
             </button>
-            <button
-              onClick={() => handleTabChange("report")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
-                activeTab === "report"
-                  ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
-                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
-              }`}
-            >
-              <ClipboardList size={14} />
-              Sign Off
-            </button>
+            {isSignOffVisible && (
+              <button
+                onClick={() => handleTabChange("report")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                  activeTab === "report"
+                    ? "bg-slate-50 dark:bg-[#1D2A31] text-slate-900 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-700"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+                }`}
+              >
+                <ClipboardList size={14} />
+                Sign Off
+              </button>
+            )}
           </div>,
           document.getElementById("header-portal")!,
         )}
@@ -1436,7 +1438,9 @@ export const RunDetailPage = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-200">
-                  {project.name}
+                  <Link to={`/projects/${projectId}`} className="hover:text-accent transition-colors">
+                    {project.name}
+                  </Link>
                 </h1>
                 {isLive && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-bold text-emerald-600 border border-emerald-100 uppercase tracking-tighter">
@@ -1522,7 +1526,7 @@ export const RunDetailPage = () => {
               <span>Queue Dashboard</span>
             </a> */}
 
-            {isAdmin && run.status === "completed" && (
+            {role === "super_admin" && run.status === "completed" && (
               <button
                 onClick={handleCaptureVideo}
                 disabled={isRecordingVideo}
