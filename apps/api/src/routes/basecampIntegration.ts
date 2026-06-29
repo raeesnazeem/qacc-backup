@@ -9,6 +9,7 @@ import {
   getBasecampPerson,
   formatBasecampMention,
   createBasecampComment,
+  updateBasecampComment,
   deleteBasecampComment,
 } from "../lib/basecampClient"
 import { notifyOnGoogleChat } from "../services/googleChatNotificationService"
@@ -757,15 +758,7 @@ Created via QA Command Center`.trim()
       console.log(`[BasecampPush] FINAL Description before POST:`, description)
       console.log(`[BasecampPush] Calling Basecamp API: Create Comment...`)
 
-      const mainCommentResult = await createBasecampComment({
-        token: activeBasecampToken,
-        accountId: projectSettings!.basecamp_account_id,
-        projectId: projectSettings!.basecamp_project_id || task.project_id,
-        recordingId: todolistId!,
-        content: description,
-      })
-
-      const mainCommentId = mainCommentResult?.id
+      // Compile the comment thread into the main description body
       const mergedThread = [
         ...(threadComments || []).map((c: any) => {
           const formattedContent = c.content.replace(
@@ -786,20 +779,118 @@ Created via QA Command Center`.trim()
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       )
 
-      // 5.2 & 5.3 Parallel push for thread comments and Google Chat notification
-      const [threadResults, notificationResult] = await Promise.all([
-        Promise.all(
-          mergedThread.map((item) =>
-            createBasecampComment({
-              token: activeBasecampToken,
-              accountId: projectSettings!.basecamp_account_id!,
-              projectId:
-                projectSettings!.basecamp_project_id || task.project_id,
-              recordingId: todolistId!,
-              content: item.content,
-            }),
-          ),
-        ),
+      let compiledDescription = description
+      if (mergedThread.length > 0) {
+        compiledDescription += `<br/><br/><strong>Discussion Thread:</strong><br/>`
+        compiledDescription += mergedThread
+          .map((item) => {
+            return (
+              `<div style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; border-left: 2px solid #e2e8f0; padding-left: 8px;">` +
+              `<strong>${item.content.split(": ")[0]}</strong>: ${item.content.split(": ").slice(1).join(": ")}` +
+              `</div>`
+            )
+          })
+          .join("")
+      }
+
+      let mainCommentId = task.findings?.basecamp_comment_id
+      let mainCommentResult
+
+      if (mainCommentId) {
+        console.log(
+          `[BasecampPush] Comment exists on finding (${mainCommentId}). Updating existing comment...`,
+        )
+        await updateBasecampComment({
+          token: activeBasecampToken,
+          accountId: projectSettings!.basecamp_account_id,
+          projectId: projectSettings!.basecamp_project_id || task.project_id,
+          commentId: mainCommentId,
+          content: compiledDescription,
+        })
+      } else {
+        console.log(
+          `[BasecampPush] Comment does not exist. Creating new comment...`,
+        )
+        mainCommentResult = await createBasecampComment({
+          token: activeBasecampToken,
+          accountId: projectSettings!.basecamp_account_id,
+          projectId: projectSettings!.basecamp_project_id || task.project_id,
+          recordingId: todolistId!,
+          content: compiledDescription,
+        })
+        mainCommentId = mainCommentResult?.id
+          ? String(mainCommentResult.id)
+          : undefined
+      }
+
+      // const mainCommentResult = await createBasecampComment({
+      //   token: activeBasecampToken,
+      //   accountId: projectSettings!.basecamp_account_id,
+      //   projectId: projectSettings!.basecamp_project_id || task.project_id,
+      //   recordingId: todolistId!,
+      //   content: description,
+      // })
+
+      // const mainCommentId = mainCommentResult?.id
+      // const mergedThread = [
+      //   ...(threadComments || []).map((c: any) => {
+      //     const formattedContent = c.content.replace(
+      //       /\[Image Attachment:\s*(https?:\/\/[^\]]+)\]/g,
+      //       '<br/><img src="$1" style="max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 8px;" />',
+      //     )
+      //     return {
+      //       content: `${c.users?.full_name || "Unknown"}: ${formattedContent}`,
+      //       created_at: c.created_at,
+      //     }
+      //   }),
+      //   ...(threadRebuttals || []).map((r: any) => ({
+      //     content: `Developer (Rebuttal) - ${r.users?.full_name || "Unknown"}: ${r.text}`,
+      //     created_at: r.created_at,
+      //   })),
+      // ].sort(
+      //   (a, b) =>
+      //     new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      // )
+
+      // // 5.2 & 5.3 Parallel push for thread comments and Google Chat notification
+      // const [threadResults, notificationResult] = await Promise.all([
+      //   Promise.all(
+      //     mergedThread.map((item) =>
+      //       createBasecampComment({
+      //         token: activeBasecampToken,
+      //         accountId: projectSettings!.basecamp_account_id!,
+      //         projectId:
+      //           projectSettings!.basecamp_project_id || task.project_id,
+      //         recordingId: todolistId!,
+      //         content: item.content,
+      //       }),
+      //     ),
+      //   ),
+      //   notifyOnGoogleChat({
+      //     taskId: task.id,
+      //     projectId: task.project_id,
+      //     issueNumber: task.findings?.issue_number || 0,
+      //     projectName:
+      //       projectRecord?.name ||
+      //       (projectSettings as any)?.name ||
+      //       "Unknown Project",
+      //     issueHeading: (task.title || "")
+      //       .replace(/Issue\s+#\d+[:\s-]*/i, "")
+      //       .trim(), // Robustly strip "Issue #123"
+      //     findingsUrl: task.findings?.run_id
+      //       ? `${process.env.FRONTEND_URL}/projects/${task.project_id}/runs/${task.findings.run_id}/findings?findingId=${task.findings.id}`
+      //       : `${process.env.FRONTEND_URL}/projects/${task.project_id}`,
+      //     assignedUserIds: allAssignedTo,
+      //     category: (task.findings?.severity || "Finding").toUpperCase(), // Uppercase for badge style
+      //     description: task.description || "No description provided",
+      //     thumbnails: Array.isArray(task.gallery_images)
+      //       ? task.gallery_images
+      //       : [],
+      //   }),
+      // ])
+      // Only execute Google Chat notification, no separate comment spams
+      const [_, notificationResult] = await Promise.all([
+        Promise.resolve(true),
         notifyOnGoogleChat({
           taskId: task.id,
           projectId: task.project_id,
@@ -810,12 +901,12 @@ Created via QA Command Center`.trim()
             "Unknown Project",
           issueHeading: (task.title || "")
             .replace(/Issue\s+#\d+[:\s-]*/i, "")
-            .trim(), // Robustly strip "Issue #123"
+            .trim(),
           findingsUrl: task.findings?.run_id
             ? `${process.env.FRONTEND_URL}/projects/${task.project_id}/runs/${task.findings.run_id}/findings?findingId=${task.findings.id}`
             : `${process.env.FRONTEND_URL}/projects/${task.project_id}`,
           assignedUserIds: allAssignedTo,
-          category: (task.findings?.severity || "Finding").toUpperCase(), // Uppercase for badge style
+          category: (task.findings?.severity || "Finding").toUpperCase(),
           description: task.description || "No description provided",
           thumbnails: Array.isArray(task.gallery_images)
             ? task.gallery_images
@@ -872,12 +963,45 @@ Created via QA Command Center`.trim()
         .in("id", siblingIds)
         .select("id")
 
+      // if (updateError) {
+      //   console.error("[BasecampPush] Supabase Update Error:", updateError)
+      //   return res.json({
+      //     basecampUrl,
+      //     warning: "Supabase update failed but Basecamp todo created",
+      //   })
+      // }
+
       if (updateError) {
         console.error("[BasecampPush] Supabase Update Error:", updateError)
         return res.json({
           basecampUrl,
           warning: "Supabase update failed but Basecamp todo created",
         })
+      }
+
+      // Save basecamp comment info to findings table if not already set
+      if (
+        task.finding_id &&
+        mainCommentId &&
+        !task.findings?.basecamp_comment_id
+      ) {
+        console.log(
+          `[BasecampPush] Saving comment ID ${mainCommentId} to findings table...`,
+        )
+        const { error: findingUpdateError } = await supabase
+          .from("findings")
+          .update({
+            basecamp_comment_id: mainCommentId,
+            basecamp_comment_url: basecampUrl,
+          })
+          .eq("id", task.finding_id)
+
+        if (findingUpdateError) {
+          console.error(
+            "[BasecampPush] Failed to update finding with basecamp comment info:",
+            findingUpdateError,
+          )
+        }
       }
 
       if (!updatedRows || updatedRows.length === 0) {
