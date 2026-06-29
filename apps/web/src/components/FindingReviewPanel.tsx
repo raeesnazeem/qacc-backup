@@ -419,7 +419,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
               {generalFindings.length}
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 findings-grid gap-6">
             {generalFindings.map((finding) => (
               <div
                 id={`finding-card-${finding.id}`}
@@ -583,7 +583,7 @@ export const FindingReviewPanel: React.FC<FindingReviewPanelProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+      <div className="grid grid-cols-1 md:grid-cols-2 findings-grid gap-6 pb-20">
         {filteredFindings.map((finding) => (
           <div
             id={`finding-card-${finding.id}`}

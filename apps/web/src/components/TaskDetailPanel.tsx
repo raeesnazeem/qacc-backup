@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { toast } from "react-hot-toast"
 import {
   X,
@@ -32,6 +32,7 @@ import { TaskActivityFeed } from "./TaskActivityFeed"
 import { useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
 import { useEffect } from "react"
+import { useAuthAxios } from "../lib/useAuthAxios"
 
 interface TaskDetailPanelProps {
   task: Task | null
@@ -48,7 +49,92 @@ export const TaskDetailPanel = ({
 }: TaskDetailPanelProps) => {
   const [rebuttalText, setRebuttalText] = useState("")
   const [rebuttalUrl, setRebuttalUrl] = useState("")
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const axios = useAuthAxios()
+
+  const compressToWebP = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement("canvas")
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext("2d")
+          if (!ctx) {
+            reject(new Error("Canvas context not available"))
+            return
+          }
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob(
+            (blob) => {
+              if (blob) resolve(blob)
+              else reject(new Error("Canvas toBlob failed"))
+            },
+            "image/jpeg",
+            0.8,
+          )
+        }
+        img.onerror = (err) => reject(err)
+      }
+      reader.onerror = (err) => reject(err)
+    })
+  }
+
+  const handleUpload = async (files: FileList | File[]) => {
+    if (!task?.id) return
+    setIsUploading(true)
+    try {
+      const file = files[0]
+      if (file) {
+        if (!file.type.startsWith("image/")) {
+          toast.error("Only image files are allowed")
+          return
+        }
+        const jpegBlob = await compressToWebP(file)
+        const fileName = `${task.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`
+
+        const reader = new FileReader()
+        const uploadPromise = new Promise<string>((resolve, reject) => {
+          reader.onloadend = async () => {
+            const base64 = reader.result as string
+            try {
+              const { data } = await axios.post("/api/storage/upload", {
+                base64,
+                fileName,
+              })
+              resolve(data.url)
+            } catch (err) {
+              reject(err)
+            }
+          }
+          reader.onerror = (err) => reject(err)
+        })
+
+        reader.readAsDataURL(jpegBlob)
+        const publicUrl = await uploadPromise
+        setRebuttalUrl(publicUrl)
+        toast.success("Screenshot uploaded successfully")
+      }
+    } catch (error: any) {
+      toast.error("Failed to upload image: " + error.message)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      handleUpload(e.target.files)
+    }
+  }
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [descriptionValue, setDescriptionValue] = useState("")
 
   // Ensure we only fetch if we have a valid task and the panel is open
   const isValidTask = initialTask && (initialTask as any).project_id
@@ -96,6 +182,10 @@ export const TaskDetailPanel = ({
       supabase.removeChannel(channel)
     }
   }, [task?.id, isOpen, queryClient])
+
+  useEffect(() => {
+    setDescriptionValue(task?.description || "")
+  }, [task?.description])
 
   const { data: project } = useProject(task?.project_id || "")
 
@@ -174,6 +264,21 @@ export const TaskDetailPanel = ({
         onSuccess: () => {
           setRebuttalText("")
           setRebuttalUrl("")
+        },
+      },
+    )
+  }
+
+  const handleSaveDescription = () => {
+    updateTask(
+      { id: task.id, data: { description: descriptionValue } },
+      {
+        onSuccess: () => {
+          setIsEditingDescription(false)
+          toast.success("Description updated")
+        },
+        onError: () => {
+          toast.error("Failed to update description")
         },
       },
     )
@@ -374,12 +479,50 @@ export const TaskDetailPanel = ({
 
             {/* Description */}
             <div className="space-y-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                Description
-              </span>
-              <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-[#1D2A31] p-4 rounded-xl border border-slate-100 dark:border-slate-700 min-h-[100px]">
-                {task.description || "No description provided."}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  Description
+                </span>
+                {!isEditingDescription && (
+                  <button
+                    onClick={() => setIsEditingDescription(true)}
+                    className="text-[10px] font-bold text-accent uppercase tracking-widest hover:text-accent/80 transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
+              {isEditingDescription ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={descriptionValue}
+                    onChange={(e) => setDescriptionValue(e.target.value)}
+                    className="w-full text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-white dark:bg-[#1D2A31] p-4 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[120px] focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all resize-y"
+                    placeholder="Enter task description..."
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveDescription}
+                      className="px-3 py-1.5 bg-accent text-white hover:bg-accent/90 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDescriptionValue(task.description || "")
+                        setIsEditingDescription(false)
+                      }}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-[#1D2A31] p-4 rounded-xl border border-slate-100 dark:border-slate-700 min-h-[100px]">
+                  {task.description || "No description provided."}
+                </div>
+              )}
             </div>
 
             {/* Evidence Gallery */}
@@ -420,22 +563,44 @@ export const TaskDetailPanel = ({
                 taskId={task.id}
                 comments={fullComments}
                 rebuttals={fullRebuttals}
+                taskDescription={task.description}
+                taskCreatedAt={task.created_at}
+                taskCreatorName={task.creator?.full_name}
+                isEditingDescription={isEditingDescription}
+                setIsEditingDescription={setIsEditingDescription}
+                descriptionValue={descriptionValue}
+                setDescriptionValue={setDescriptionValue}
+                onSaveDescription={handleSaveDescription}
+                basecampElement={
+                  !isFeedbackTask &&
+                  project?.basecamp_account_id &&
+                  project?.basecamp_project_id &&
+                  (project?.basecamp_todo_list_id ||
+                    project?.basecamp_post_todo_list_id) ? (
+                    <BasecampPushButton
+                      task={task}
+                      onPush={handlePush}
+                      isPending={isPushing}
+                      isSuccess={pushSuccess}
+                    />
+                  ) : undefined
+                }
               />
             </div>
 
             {/* Rebuttal Section */}
             {(hasRebuttals || isDeveloper) && (
               <div className="space-y-4 pt-8 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center space-x-2 text-red-600">
+                <div className="flex items-center space-x-2 text-amber-600">
                   <ShieldAlert className="w-4 h-4" />
                   <h3 className="font-bold uppercase tracking-widest text-xs">
                     Developer Rebuttal
                   </h3>
                 </div>
 
-                <div className="bg-red-50/50 border border-red-100 rounded-xl p-4 space-y-4">
+                <div className="bg-red-50/50 dark:bg-[#131D22] border border-red-100 dark:border-[#1D2A31] rounded-xl p-4 space-y-4">
                   {isDeveloper && (
-                    <p className="text-xs text-red-600 font-medium leading-relaxed">
+                    <p className="text-xs text-amber-600 font-medium leading-relaxed">
                       If you disagree with this finding, provide a detailed
                       rebuttal and optional screenshot. QA will review it.
                     </p>
@@ -446,7 +611,7 @@ export const TaskDetailPanel = ({
                       {fullRebuttals.map((r: any) => (
                         <div
                           key={r.id}
-                          className="bg-slate-50 dark:bg-[#1D2A31] border border-red-100 dark:border-red-900/50 p-3 rounded-lg space-y-2"
+                          className="bg-slate-50 dark:bg-[#1D2A31] border border-red-100 dark:border-[#131D22] p-3 rounded-lg space-y-2"
                         >
                           <div className="flex items-center justify-between text-[10px] font-bold uppercase text-red-400">
                             <span>{r.users?.full_name}</span>
@@ -475,26 +640,64 @@ export const TaskDetailPanel = ({
 
                   <CanDo role="developer">
                     <form onSubmit={handleAddRebuttal} className="space-y-3">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
                       <textarea
                         value={rebuttalText}
                         onChange={(e) => setRebuttalText(e.target.value)}
-                        placeholder="Explain why this finding is incorrect..."
-                        className="w-full bg-slate-50 dark:bg-[#1D2A31] border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none min-h-[80px]"
+                        onPaste={async (e) => {
+                          if (e.clipboardData.files.length > 0) {
+                            e.preventDefault()
+                            await handleUpload(e.clipboardData.files)
+                          }
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={async (e) => {
+                          e.preventDefault()
+                          if (e.dataTransfer.files.length > 0) {
+                            await handleUpload(e.dataTransfer.files)
+                          }
+                        }}
+                        placeholder="Explain why this finding is incorrect... (Paste or drag screenshot here)"
+                        className="w-full bg-slate-50 dark:bg-[#1D2A31] border border-red-100 dark:border-[#1D2A31] rounded-lg px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none min-h-[80px]"
                       />
-                      <div className="flex items-center space-x-2">
-                        <div className="relative flex-1">
-                          <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="url"
-                            value={rebuttalUrl}
-                            onChange={(e) => setRebuttalUrl(e.target.value)}
-                            placeholder="Screenshot URL (optional)"
-                            className="w-full bg-slate-50 dark:bg-[#1D2A31] border border-red-100 dark:border-red-900/50 rounded-lg pl-10 pr-3 py-2 text-xs dark:text-white focus:outline-none"
+                      {rebuttalUrl && (
+                        <div className="relative w-20 h-20 rounded border border-slate-200 dark:border-[#1D2A31] overflow-hidden bg-black/5">
+                          <img
+                            src={rebuttalUrl}
+                            alt="Screenshot Preview"
+                            className="w-full h-full object-cover"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setRebuttalUrl("")}
+                            className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 text-white rounded-full hover:bg-red-700"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
+                      )}
+                      <div className="flex items-center justify-between w-full">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                          className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors disabled:opacity-50"
+                          title="Upload screenshot"
+                        >
+                          <ImageIcon className="w-4 h-4" />
+                          {isUploading
+                            ? "Uploading..."
+                            : "Upload Screenshot (optional)"}
+                        </button>
                         <button
                           type="submit"
-                          disabled={!rebuttalText.trim()}
+                          disabled={!rebuttalText.trim() || isUploading}
                           className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
                         >
                           Submit

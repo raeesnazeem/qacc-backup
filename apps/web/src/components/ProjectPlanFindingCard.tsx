@@ -726,7 +726,7 @@ export const ProjectPlanFindingCard: React.FC<FindingCardProps> = ({
               </div>
             )}
           {allAssigneesListForUI.length > 0 && (
-            <div className="ml-2 flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
+            <div className="ml-auto flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
                 Assigned
               </span>

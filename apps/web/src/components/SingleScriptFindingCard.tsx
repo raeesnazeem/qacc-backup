@@ -322,8 +322,8 @@ export const SingleScriptFindingCard: React.FC<FindingCardProps> = ({
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
               Screenshots
             </p>
-            <div className="flex items-start justify-between w-full">
-              <div className="w-[50%] flex">
+            <div className="flex flex-wrap items-start justify-between w-full gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {screenshotUrls.slice(0, 4).map((url, idx) => (
                   <div
                     key={url}
@@ -360,7 +360,7 @@ export const SingleScriptFindingCard: React.FC<FindingCardProps> = ({
                 ))}
               </div>
 
-              <div className="w-[25%] flex flex-col gap-2 pl-4 border-l border-slate-100 dark:border-slate-700/50 ml-5">
+              <div className="flex flex-col gap-2 pl-4 border-l border-slate-100 dark:border-slate-700/50">
                 <label
                   className={`flex items-center gap-2 group/cb ${isLocked ? "pointer-events-none" : ""}`}
                 >
@@ -438,8 +438,8 @@ export const SingleScriptFindingCard: React.FC<FindingCardProps> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-700/50 mt-auto w-full">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-50 dark:border-slate-700/50 mt-auto w-full">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsBrowserOpen(true)}
               className="btn-unified w-fit flex items-center gap-2"
@@ -603,7 +603,7 @@ export const SingleScriptFindingCard: React.FC<FindingCardProps> = ({
               })()}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {allAssigneesList.length > 0 && (
               <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">

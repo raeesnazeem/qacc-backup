@@ -275,8 +275,8 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
               Screenshots Evidence
             </p>
-            <div className="flex items-center gap-6">
-              <div className="flex gap-4">
+            <div className="flex flex-wrap items-start justify-between w-full gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {screenshotUrls.map((url, idx) => (
                   <div key={url} className="space-y-1">
                     <div>
@@ -387,8 +387,9 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
           </div>
         )}
 
-        <div className="pt-2 flex items-center justify-start gap-3 mt-4 border-t border-slate-100 dark:border-slate-700/50 pt-4">
-          <button
+        <div className="pt-2 flex flex-wrap items-center justify-between gap-4 w-full mt-4 border-t border-slate-100 dark:border-slate-700/50 pt-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
             onClick={() => setIsBrowserOpen(true)}
             className="btn-unified w-fit flex items-center gap-2"
           >
@@ -533,6 +534,7 @@ export const CallnowFindingCard: React.FC<FindingCardProps> = ({
               </button>
             </div>
           )}
+          </div>
           {allAssigneesListForUI.length > 0 && (
             <div className="ml-2 flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">

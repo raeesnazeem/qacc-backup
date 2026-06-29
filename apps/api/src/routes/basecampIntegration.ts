@@ -1793,14 +1793,16 @@ router.post(
           <em>Pushed via QA Command Center</em>
         `.trim()
 
+        let commentUrl = ""
         try {
-          await createBasecampComment({
+          const commentResponse = await createBasecampComment({
             token: activeBasecampToken,
             accountId: projectSettings!.basecamp_account_id,
             projectId: projectSettings!.basecamp_project_id || projectId,
             recordingId: groupTargetId,
             content: commentContent,
           })
+          commentUrl = commentResponse.url
 
           // Post each comment in thread as a separate comment in Basecamp
           const groupTaskIdsForThread = groupTasks.map((t) => t.id)
@@ -1828,7 +1830,7 @@ router.post(
 
           // Update all tasks in this group in Supabase
           const groupTaskIds = groupTasks.map((t) => t.id)
-          const basecampUrl = `https://3.basecamp.com/${projectSettings.basecamp_account_id}/buckets/${projectSettings.basecamp_project_id}/todolists/${groupTargetId}`
+          const basecampUrl = commentUrl || `https://3.basecamp.com/${projectSettings.basecamp_account_id}/buckets/${projectSettings.basecamp_project_id}/todolists/${groupTargetId}`
 
           await supabase
             .from("tasks")

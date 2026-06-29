@@ -19,6 +19,15 @@ interface CommentThreadProps {
   taskId: string
   comments: TaskComment[]
   rebuttals?: TaskRebuttal[]
+  taskDescription?: string
+  taskCreatedAt?: string
+  taskCreatorName?: string
+  isEditingDescription?: boolean
+  setIsEditingDescription?: (val: boolean) => void
+  descriptionValue?: string
+  setDescriptionValue?: (val: string) => void
+  onSaveDescription?: () => void
+  basecampElement?: React.ReactNode
 }
 
 type ThreadItem =
@@ -29,6 +38,15 @@ export const CommentThread = ({
   taskId,
   comments,
   rebuttals = [],
+  taskDescription,
+  taskCreatedAt,
+  taskCreatorName,
+  isEditingDescription,
+  setIsEditingDescription,
+  descriptionValue,
+  setDescriptionValue,
+  onSaveDescription,
+  basecampElement,
 }: CommentThreadProps) => {
   const [newComment, setNewComment] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -119,6 +137,20 @@ export const CommentThread = ({
 
   // Merge and sort in chronological order
   const threadItems: ThreadItem[] = [
+    ...(taskDescription
+      ? [
+          {
+            id: "initial-description",
+            created_at: taskCreatedAt || new Date().toISOString(),
+            content: taskDescription,
+            itemType: "comment" as const,
+            is_ai_generated: false,
+            users: {
+              full_name: taskCreatorName || "QA Creator",
+            },
+          } as any,
+        ]
+      : []),
     ...comments.map((c) => ({ ...c, itemType: "comment" as const })),
     ...rebuttals.map((r) => ({ ...r, itemType: "rebuttal" as const })),
   ].sort(
@@ -192,10 +224,75 @@ export const CommentThread = ({
           </div>
         ) : (
           threadItems.map((item) => {
+            const isInitial = item.id === "initial-description"
             const isRebuttal = item.itemType === "rebuttal"
             const isAI = item.itemType === "comment" && item.is_ai_generated
 
-            const rawContent = isRebuttal ? item.text : item.content
+            const rawContent = item.itemType === "rebuttal" ? item.text : item.content
+
+            if (isInitial) {
+              return (
+                <div key={item.id} className="flex space-x-3 group animate-in fade-in duration-300 mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
+                  <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-[10px] font-bold text-accent border border-accent/20 shrink-0">
+                    QA
+                  </div>
+                  <div className="flex-1 space-y-2 min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          Initial Issue Description
+                        </span>
+                        {setIsEditingDescription && !isEditingDescription && (
+                          <button
+                            onClick={() => setIsEditingDescription?.(true)}
+                            className="text-[10px] font-bold text-accent uppercase tracking-widest hover:text-accent/80 transition-colors"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center text-[10px] text-slate-400">
+                        <Clock className="w-2.5 h-2.5 mr-1" />
+                        {format(new Date(item.created_at), "MMM d, HH:mm")}
+                      </div>
+                    </div>
+                    {isEditingDescription && setIsEditingDescription && setDescriptionValue && onSaveDescription ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={descriptionValue}
+                          onChange={(e) => setDescriptionValue(e.target.value)}
+                          className="w-full text-sm text-slate-700 dark:text-slate-200 leading-relaxed bg-white dark:bg-[#1D2A31] p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[100px] focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all resize-y"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={onSaveDescription}
+                            className="px-3 py-1.5 bg-accent text-white hover:bg-accent/90 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setIsEditingDescription?.(false)}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-slate-600 dark:text-slate-300 p-3 rounded-xl rounded-tl-none border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#1D2A31] break-words whitespace-pre-wrap leading-relaxed space-y-3">
+                        <div>{rawContent || "No description provided."}</div>
+                        {basecampElement && (
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between gap-4">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Basecamp Integration</span>
+                            {basecampElement}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
 
             // Extract attached images using regex
             const imgRegex = /\[Image Attachment:\s*(https?:\/\/[^\]]+)\]/g

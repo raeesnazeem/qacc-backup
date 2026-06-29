@@ -97,20 +97,22 @@ export const AppLayout = () => {
   if (isLoaded && user) {
     const email = user.primaryEmailAddress?.emailAddress || ""
     if (!email.endsWith("@growth99.com") && !email.endsWith("@growth99.net")) {
-      const isAllowedDevEmail = import.meta.env.DEV && email === "iraeesnaseem@gmail.com"
-      
+      const isAllowedDevEmail =
+        import.meta.env.DEV && email === "iraeesnaseem@gmail.com"
+
       if (!isAllowedDevEmail) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#131d22]">
-          <div className="bg-white dark:bg-[#1D2A31] p-8 rounded-xl shadow-lg border border-red-500/30 text-center max-w-md">
-            <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-              Access Denied
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              Only employees with a <b>@growth99.com</b> or <b>@growth99.net</b>{" "}
-              email address are permitted to access this portal.
-            </p>
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#131d22]">
+            <div className="bg-white dark:bg-[#1D2A31] p-8 rounded-xl shadow-lg border border-red-500/30 text-center max-w-md">
+              <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                Access Denied
+              </h1>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                Only employees with a <b>@growth99.com</b> or{" "}
+                <b>@growth99.net</b> email address are permitted to access this
+                portal.
+              </p>
               <button
                 onClick={() => signOut()}
                 className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded transition-colors"
@@ -385,11 +387,14 @@ export const AppLayout = () => {
             )}
           </div>
 
-          <div id="header-portal" className="flex-1 flex justify-center mx-4 " />
+          <div
+            id="header-portal"
+            className="flex-1 flex justify-center mx-4 "
+          />
 
           <div className="flex items-center space-x-6">
             <ActiveUsersDropdown />
-            
+
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -423,7 +428,10 @@ export const AppLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main id="main-scroll-container" className="flex-1 overflow-auto p-8 bg-bg-main dark:bg-[#131D22]">
+        <main
+          id="main-scroll-container"
+          className="flex-1 overflow-auto p-8 bg-bg-main dark:bg-[#131D22]"
+        >
           <Outlet />
         </main>
         {isAdmin && <ChatSidebar />}

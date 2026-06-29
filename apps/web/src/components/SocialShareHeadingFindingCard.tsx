@@ -186,9 +186,10 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
   const isLocked = hasTask || isAssigned || isPushed
 
   const currentAssignees =
-    finding.tasks?.flatMap((t: any) => t.users ? [t.users] : []) || []
+    finding.tasks?.flatMap((t: any) => (t.users ? [t.users] : [])) || []
   const allAssigneesList = [...currentAssignees, ...assignedUsers].filter(
-    (v, i, a) => a.findIndex((t) => (t.userId || t.id) === (v.userId || v.id)) === i,
+    (v, i, a) =>
+      a.findIndex((t) => (t.userId || t.id) === (v.userId || v.id)) === i,
   )
 
   const cardBorder = isLocked
@@ -319,10 +320,10 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
 
       {screenshotUrls.length > 0 && (
         <div className="space-y-2 pt-2">
-          <div className="flex items-start justify-between w-full">
-            <div className="w-[50%] flex">
+          <div className="flex flex-wrap items-start justify-between w-full gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {screenshotUrls.slice(0, 4).map((url, idx) => (
-                <div key={url} className="space-y-1 w-1/16 gap-1 flex-shrink-0">
+                <div key={url} className="space-y-1 w-full flex flex-col">
                   <div className="w-full">
                     <FindingCardWithScreenshot
                       finding={{ ...finding, screenshot_url: url }}
@@ -354,7 +355,7 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
               ))}
             </div>
 
-            <div className="w-[25%] flex flex-col gap-2 pl-4 border-l border-slate-100 dark:border-slate-700/50 ml-5">
+            <div className="flex flex-col gap-2 pl-4 border-l border-slate-100 dark:border-slate-700/50">
               <label className="flex items-center gap-2 group/cb">
                 <input
                   type="checkbox"
@@ -385,8 +386,8 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
       )}
 
       {canAction && (
-        <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
+          <div className="flex flex-wrap items-center gap-2">
             {isFalsePositive ? (
               <button
                 onClick={() => onConfirm?.(finding.id)}
@@ -612,14 +613,18 @@ export const SocialShareHeadingFindingCard: React.FC<FindingCardProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {allAssigneesList && allAssigneesList.length > 0 && (
               <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#131d22] border border-slate-100 dark:border-slate-700 p-1.5 rounded-full pl-3 pr-2">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
                   Assigned
                 </span>
                 <div className="flex -space-x-1.5 overflow-hidden">
-                  {Array.from(new Map(allAssigneesList.map(u => [u.id || u.user_id, u])).values()).map((u, idx) => (
+                  {Array.from(
+                    new Map(
+                      allAssigneesList.map((u) => [u.id || u.user_id, u]),
+                    ).values(),
+                  ).map((u, idx) => (
                     <div
                       key={u.id || u.user_id || idx}
                       className="w-6 h-6 rounded-full bg-slate-200 dark:bg-[#1d2a31] border-2 border-white dark:border-[#1D2A31] flex items-center justify-center text-[8px] font-bold text-slate-500 dark:text-slate-300 relative group/avatar"
