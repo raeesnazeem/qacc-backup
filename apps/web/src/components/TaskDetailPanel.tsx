@@ -166,17 +166,52 @@ export const TaskDetailPanel = ({
     if (!task?.id || !isOpen) return
 
     const channel = supabase
-      .channel("tasks")
-      .on("broadcast", { event: "task_updated" }, (payload) => {
-        if (payload.payload?.taskId === task.id) {
-          console.log("[Realtime] Refreshing task details and activity...")
+      .channel(`task-detail-${task.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tasks",
+          filter: `id=eq.${task.id}`,
+        },
+        () => {
+          console.log("[Realtime] Task updated in DB...")
           queryClient.invalidateQueries({ queryKey: ["tasks", task.id] })
-          queryClient.invalidateQueries({
-            queryKey: ["task-activity", task.id],
-          })
+          queryClient.invalidateQueries({ queryKey: ["tasks"] })
+          queryClient.invalidateQueries({ queryKey: ["task-activity", task.id] })
         }
-      })
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "comments",
+          filter: `task_id=eq.${task.id}`,
+        },
+        () => {
+          console.log("[Realtime] New comment in DB...")
+          queryClient.invalidateQueries({ queryKey: ["tasks", task.id] })
+          queryClient.invalidateQueries({ queryKey: ["task-activity", task.id] })
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rebuttals",
+          filter: `task_id=eq.${task.id}`,
+        },
+        () => {
+          console.log("[Realtime] New rebuttal in DB...")
+          queryClient.invalidateQueries({ queryKey: ["tasks", task.id] })
+          queryClient.invalidateQueries({ queryKey: ["task-activity", task.id] })
+        }
+      )
       .subscribe()
+
 
     return () => {
       supabase.removeChannel(channel)

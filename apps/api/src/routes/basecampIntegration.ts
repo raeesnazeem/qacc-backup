@@ -246,7 +246,7 @@ router.post(
           .in("task_id", siblingIdsForThread),
         supabase
           .from("rebuttals")
-          .select("text, created_at, users:submitted_by (full_name)")
+          .select("text, created_at, screenshot_url, users:submitted_by (full_name)")
           .in("task_id", siblingIdsForThread),
       ])
 
@@ -770,10 +770,16 @@ Created via QA Command Center`.trim()
             created_at: c.created_at,
           }
         }),
-        ...(threadRebuttals || []).map((r: any) => ({
-          content: `Developer (Rebuttal) - ${r.users?.full_name || "Unknown"}: ${r.text}`,
-          created_at: r.created_at,
-        })),
+        ...(threadRebuttals || []).map((r: any) => {
+          let text = r.text
+          if (r.screenshot_url) {
+            text += `<br/><br/><img src="${r.screenshot_url}" style="max-width: 100%; max-height: 400px; border-radius: 8px;" />`
+          }
+          return {
+            content: `Developer (Rebuttal) - ${r.users?.full_name || "Unknown"}: ${text}`,
+            created_at: r.created_at,
+          }
+        }),
       ].sort(
         (a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
@@ -1509,7 +1515,7 @@ router.post(
 
           const { data: groupRebuttals } = await supabase
             .from("rebuttals")
-            .select("text, created_at, users:submitted_by (full_name)")
+            .select("text, created_at, screenshot_url, users:submitted_by (full_name)")
             .in("task_id", groupTaskIdsForThread)
 
           const groupMergedThread = [
@@ -1517,10 +1523,16 @@ router.post(
               content: `${c.users?.full_name || "Unknown"}: ${c.content}`,
               created_at: c.created_at,
             })),
-            ...(groupRebuttals || []).map((r: any) => ({
-              content: `Developer (Rebuttal) - ${r.users?.full_name || "Unknown"}: ${r.text}`,
-              created_at: r.created_at,
-            })),
+            ...(groupRebuttals || []).map((r: any) => {
+              let text = r.text
+              if (r.screenshot_url) {
+                text += `<br/><br/><img src="${r.screenshot_url}" style="max-width: 100%; max-height: 400px; border-radius: 8px;" />`
+              }
+              return {
+                content: `Developer (Rebuttal) - ${r.users?.full_name || "Unknown"}: ${text}`,
+                created_at: r.created_at,
+              }
+            }),
           ].sort(
             (a, b) =>
               new Date(a.created_at).getTime() -
