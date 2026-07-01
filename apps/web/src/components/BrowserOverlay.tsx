@@ -255,7 +255,7 @@ export const BrowserOverlay: React.FC<BrowserOverlayProps> = ({
             </div>
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center p-8 overflow-auto">
+          <div className="w-full h-full flex items-center justify-center overflow-auto">
             <div
               className="bg-slate-50 dark:bg-white shadow-2xl rounded-sm overflow-hidden transition-all duration-500 relative border dark:border-slate-700"
               style={{
