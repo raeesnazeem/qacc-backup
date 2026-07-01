@@ -30,6 +30,12 @@ api.interceptors.response.use(
       // Handle unauthorized access
       console.error('Unauthorized access')
     }
+    
+    if (error.response?.status === 409) {
+      console.warn('Conflict Error (409):', error.response?.data?.error || 'Duplicate resource detected.')
+      // Add any global toast notification or custom handling for 409 here
+    }
+
     return Promise.reject(error)
   }
 )
