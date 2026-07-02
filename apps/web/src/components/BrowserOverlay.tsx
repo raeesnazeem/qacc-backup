@@ -71,15 +71,10 @@ export const BrowserOverlay: React.FC<BrowserOverlayProps> = ({
       // const blob = new Blob([response.data], { type: "text/html" })
       // const dataUrl = URL.createObjectURL(blob)
       // setIframeUrl(dataUrl)
-      const cloudflareProxy = import.meta.env.VITE_CLOUDFLARE_PROXY_URL
-      if (cloudflareProxy) {
-        setIframeUrl(`${cloudflareProxy}/?url=${encodeURIComponent(targetUrl)}`)
-      } else {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001"
-        setIframeUrl(
-          `${apiUrl}/api/proxy-browser?url=${encodeURIComponent(targetUrl)}`,
-        )
-      }
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001"
+      setIframeUrl(
+        `${apiUrl}/api/proxy-browser?url=${encodeURIComponent(targetUrl)}`,
+      )
     } catch (err: any) {
       console.error("[BrowserOverlay] Proxy load failed:", err)
       setError(
